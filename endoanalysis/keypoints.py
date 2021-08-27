@@ -50,16 +50,8 @@ class KeypointsArray(np.ndarray):
         self._check_shape()
         self._check_dtype()
 
-#     def _check_shape(self):
-#         if len(self.shape) == 1 and self.shape[0] != 0:
-#             raise Exception("If KeypointsArray is empty, it should be one dimensional")
-#         elif len(self.shape) == 2 and self.shape[1] != self.expected_param_number:
-#             raise Exception(
-#                 "Non-empty %s should have the shape (num_images, %i)"
-#                 % (type(self), self.expected_param_number)
-#             )
     def _check_shape(self):
-#         print(self.shape)
+
         if len(self.shape) != 2:
             raise Exception(
                 " %s should have the shape (num_images, %i)"

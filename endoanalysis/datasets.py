@@ -3,47 +3,40 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import patches, cm
-import albumentations as A
 
 from endoanalysis.keypoints import KeypointsTruthArray, KeypointsTruthBatchArray, keypoints_list_to_batch, load_keypoints
 
 
-def label_path_from_image_path(image_path):
-
-    image_path_parts = os.path.normpath(image_path).split(os.sep)
-    label_path_parts = ["labels"] + image_path_parts[1:]
-
-    label_path = os.path.join(*label_path_parts)
-    label_path = label_path.split(".")[:-1]
-    label_path = ".".join(label_path + ["txt"])
-    return label_path
-
+def extract_images_and_labels_paths(images_list_file, labels_list_file):
     
-def parse_files_list(path_to_file_with_list):
-    images_paths = []
-    labels_paths = []
-    dataset_dir = os.path.dirname(path_to_file_with_list)
+    images_list_dir = os.path.dirname(images_list_file)
+    labels_list_dir = os.path.dirname(labels_list_file)
 
-    with open(path_to_file_with_list, "r") as image_list_file:
-        for line in image_list_file:
+    with open(images_list_file, "r") as images_file:
+        images = images_file.readlines()
+        images = [os.path.normpath(os.path.join(images_list_dir,x.strip())) for x in images]
+    with open(labels_list_file, "r") as labels_file:
+        labels = labels_file.readlines()
+        labels = [os.path.normpath(os.path.join(labels_list_dir,x.strip())) for x in labels]
+    
+    check_images_and_labels_pathes(images, labels)
+    
+    return images, labels
 
-            image_path = line.strip()
-            if not (
-                image_path.startswith("./images") or image_path.startswith("images")
-            ):
-                raise Exception("Wrong file path spectification: %s" % image_path)
+def check_images_and_labels_pathes(images_paths, labels_paths):
+    
 
-            if image_path.startswith("./images"):
-                image_path = image_path[2:]
-
-            images_paths.append(image_path)
-            
-            
-    images_paths.sort()
-    labels_paths = [os.path.join(dataset_dir, label_path_from_image_path(x)) for x in images_paths]
-    images_paths = [os.path.join(dataset_dir, x) for x in images_paths]
-
-    return images_paths, labels_paths
+    if len(images_paths) != len(labels_paths):
+        raise Exception("Numbers of images and labels are not equal")
+        
+    for image_path, labels_path in zip(images_paths, labels_paths):
+        dirname_image = os.path.dirname(image_path)
+        dirname_labels = os.path.dirname(labels_path)
+        filename_image = os.path.basename(image_path)
+        filename_labels = os.path.basename(labels_path)
+     
+        if ".".join(filename_image.split(".")[:-1]) != ".".join(filename_labels.split(".")[:-1]):
+            raise Exception("Different dirnames found: \n %s\n  %s"%(images_paths, labels_paths))
 
 
 def load_image(image_path):
@@ -54,15 +47,31 @@ def load_image(image_path):
 class PointsDataset:
     def __init__(
         self,
-        path_to_file_with_list,
+        images_list,
+        labels_list,
         keypoints_dtype=np.int16,
+        cmap_kwargs = {"cmap": cm.Set1, "period": 8}
     ):
 
-        self.path_to_file_with_list = path_to_file_with_list
+
+            
         self.keypoints_dtype = keypoints_dtype
         # reading images_list
-        self.images_paths, self.labels_paths = parse_files_list(path_to_file_with_list)
-
+        
+        if type(images_list) != type(labels_list):
+            raise Exception("images_list_files and labels_list_file should have the same type")
+            
+        if type(images_list) != list:
+            images_list = [images_list]
+            labels_list = [labels_list]
+        self.images_paths = []
+        self.labels_paths = []
+        for images_list_path, labels_list_path in zip(images_list, labels_list):
+            images_paths_current, labels_paths_current = extract_images_and_labels_paths(images_list_path, labels_list_path)
+            self.images_paths += images_paths_current
+            self.labels_paths +=labels_paths_current
+        self.cmap_kwargs = cmap_kwargs
+        
     def __len__(self):
         return len(self.images_paths)
 
@@ -101,9 +110,12 @@ class PointsDataset:
         image_key="image",
         print_labels=False,
         labels_kwargs={"radius": 3, "alpha": 1.0},
-        colormap_kwargs = {"cmap": cm.Set1, "period": 8} 
+        cmap_kwargs = None 
     ):
-
+        
+        if cmap_kwargs is None:
+            cmap_kwargs = self.cmap_kwargs
+            
         sample = self[x]
         image = sample[image_key]
         keypoints = sample["keypoints"]
@@ -117,10 +129,10 @@ class PointsDataset:
         if show_labels:
             for center_x, center_y, obj_class in zip(x_coords, y_coords, classes):
                 
-                if colormap_kwargs["period"] is None:
-                    color = colormap_kwargs["cmap"](obj_class)
+                if "period" not in cmap_kwargs:
+                    color = cmap_kwargs["cmap"][obj_class]
                 else:
-                    color = colormap_kwargs["cmap"](obj_class % colormap_kwargs["period"])
+                    color = cmap_kwargs["cmap"](obj_class % cmap_kwargs["period"])
                 
                 patch = patches.Circle((center_x, center_y), color=color, **labels_kwargs)
 

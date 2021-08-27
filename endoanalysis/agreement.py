@@ -1,7 +1,7 @@
 import itertools
 import copy
 import numpy as np
-
+from tqdm import tqdm
 
 
 class SimilarityMeasure:
@@ -199,12 +199,14 @@ def merge_samples(samples_image):
     '''
     samples_merged = copy.deepcopy(samples_image)
     num_experts = samples_merged.shape[1]
+  
     for i, sample in enumerate(samples_merged[1:], start=1):
         for j, base_sample in enumerate(samples_merged[0:i]):
             compat, new_sample = glue_samples(sample, base_sample)
             if compat:
                 samples_merged[j] = new_sample
                 samples_merged[i] = np.array([-1] * num_experts)
+
     return samples_merged     
 
 
@@ -254,7 +256,7 @@ def compose_relaibility_matrix(objects_image, objects_classes, experts_list, sim
     endoanalysis.agreement.compose_samples_as_pairs
     endoanalysis.agreement.merge_samples
     '''
-    
+
     samples_image = []
 
     for expert_i, expert_j in itertools.combinations(range(len(experts_list)), 2):
@@ -282,6 +284,8 @@ def compose_relaibility_matrix(objects_image, objects_classes, experts_list, sim
 
     samples_image = np.vstack(samples_image).astype(int)
     
+
+    
     #sorting with the similarities, so the pairs with the largest similarity goes to the beginning
     samples_image = samples_image[np.argsort(samples_image[:,0])][::-1]
     
@@ -290,6 +294,8 @@ def compose_relaibility_matrix(objects_image, objects_classes, experts_list, sim
     
     #merging the samples
     samples_image = merge_samples(samples_image)
+    
+
       
     #erasing the samples with (-1, -1, ..., -1) signatures     
     samples_image = samples_image[np.where(np.prod(samples_image==-1, axis=1) == False)]     
@@ -346,20 +352,22 @@ def compose_batch_relaibility_matrix(
     
     
     reliability_matrix = []
+    print("Composing relaibility matrix")
+    with tqdm(total = len(images_indexes)) as pbar:
+        for image_i in images_indexes:
 
-    for image_i in images_indexes:
+            rel_matrix_image = compose_relaibility_matrix( 
+                {expert : objects_batches[expert].from_image(image_i) for expert in experts_list},
+                {expert : objects_batches[expert].from_image(image_i).classes() for expert in experts_list},
+                experts_list,
+                similarity,
+                similarity_thresh=sim_thresh
+            )
+            reliability_matrix.append(rel_matrix_image)
+            pbar.update()
 
-        rel_matrix_image = compose_relaibility_matrix( 
-            {expert : objects_batches[expert].from_image(image_i) for expert in experts_list},
-            {expert : objects_batches[expert].from_image(image_i).classes() for expert in experts_list},
-            experts_list,
-            similarity,
-            similarity_thresh=sim_thresh
-        )
-        reliability_matrix.append(rel_matrix_image)
-        
     reliability_matrix = np.vstack(reliability_matrix).transpose()
-    
+
     
     if class_agnostic:
         reliability_matrix[np.where(reliability_matrix!=-1)] = 1
