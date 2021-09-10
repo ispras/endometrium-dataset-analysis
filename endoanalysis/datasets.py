@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import patches, cm
 
-from endoanalysis.keypoints import KeypointsTruthArray, KeypointsTruthBatchArray, keypoints_list_to_batch, load_keypoints
+from endoanalysis.targets import KeypointsTruthArray, KeypointsTruthBatchArray, keypoints_list_to_batch, load_keypoints
 
 
 def extract_images_and_labels_paths(images_list_file, labels_list_file):

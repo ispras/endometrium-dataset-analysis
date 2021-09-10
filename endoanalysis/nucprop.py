@@ -209,6 +209,10 @@ def watershed_mask(image, keypoints):
     
     image_grad = compute_image_grad(image)
     mask = watershed(image_grad, markers)
+    
+    x = keypoints.x_coords()[0]
+    y = keypoints.y_coords()[0]
+    mask = mask == mask[y, x]
 
     return mask
 
@@ -398,9 +402,9 @@ class NucleiPropagator():
                 bound_x_left, bound_x_right, bound_y_top, bound_y_bottom = mask_borders
                 mask = watershed_mask(image_clipped, keypoints_clipped)
                 
-                x = keypoints_clipped.x_coords()[0]
-                y = keypoints_clipped.y_coords()[0]
-                mask = mask == mask[y, x]
+#                 x = keypoints_clipped.x_coords()[0]
+#                 y = keypoints_clipped.y_coords()[0]
+#                 mask = mask == mask[y, x]
                 mask_area = np.sum(mask)
                 if mask_area < self.min_area or mask_area > self.max_area:
                     mask = draw_circle(mask, x, y, self.average_radius)
@@ -413,11 +417,13 @@ class NucleiPropagator():
                     
                 masks.append(mask)
                 images_clipped.append(image_clipped)
-                
-            return_tuple = (masks, borders)
             
-            if return_area_flags:
-                return_tuple += (area_flags,)
+            
+        return_tuple = (masks, borders)
+
+        if return_area_flags:
+            return_tuple += (area_flags,)
+            
         return return_tuple
     
   
