@@ -3,11 +3,9 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 from skimage.segmentation import watershed
-from skimage.filters import threshold_yen
+from skimage.filters import threshold_multiotsu, threshold_yen, threshold_isodata, threshold_mean,  threshold_li, threshold_niblack, threshold_local
 from pointdet.models.LoG import LoGFilter
 from pointdet.utils.keypoints import KeypointsTruthArray
-
-
 
 
 def check_bounds(coord, bounds):
@@ -175,7 +173,7 @@ def get_adjacent_points(image, x, y, size=1):
     return x_coords, y_coords
 
 
-def watershed_mask(image, keypoints):
+def watershed_mask(image, keypoints, num_otsu_classes=3):
     """
     Generate watershed mask on the image using keypoints as cavities centers.
 
@@ -194,22 +192,20 @@ def watershed_mask(image, keypoints):
     """
     image_gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY).astype(np.uint8)
     markers = np.zeros_like(image_gray)
-    markers[image_gray > threshold_yen(image_gray)] = 1
-    markers[0,:] = 2
-    markers[-1,:] = 2
-    markers[:,0] = 2
-    markers[:,-1] = 2
+    markers[image_gray > threshold_multiotsu(image_gray, classes=num_otsu_classes)[num_otsu_classes-2]] = 1
+
+
     x_coords = keypoints.x_coords()
     y_coords = keypoints.y_coords()
     for keypoint_i, (x_c, y_c) in enumerate(zip(x_coords, y_coords)):
         x_vic, y_vic = get_adjacent_points(image, x_c, y_c, size=1)
-        for x, y in zip(x_vic, y_vic):
-            markers[y, x] = keypoint_i + 3
+       
+        markers[y_vic, x_vic] = keypoint_i + 3
     
     
     image_grad = compute_image_grad(image)
     mask = watershed(image_grad, markers)
-    
+#     plt.imshow(markers)
     x = keypoints.x_coords()[0]
     y = keypoints.y_coords()[0]
     mask = mask == mask[y, x]
@@ -263,7 +259,7 @@ class NucleiPropagator():
         self.min_area = min_area
         self.max_area = max_area
         self.average_area = average_area
-        self.average_radius = np.sqrt(average_area)
+        self.average_radius = np.sqrt(average_area / np.pi) 
         self.log_filters = []
         for filter_cfg in log_filters_cfgs:
 
@@ -357,6 +353,7 @@ class NucleiPropagator():
                 borders.append(borders_clipped)
             
         return images_clipped, keypoints_groups, borders
+
     
     def generate_masks(self, image, keypoints, return_area_flags=False):
         """
@@ -372,15 +369,15 @@ class NucleiPropagator():
             if True, the area flags will be returned
             0 means that watershed mask's area was between self.min_area and self.max_area
             1 means, that the watershed mask was smaller that self.min_area
-            2 means, that the atershed mask was bigger than self.max eras
+            2 means, that the atershed mask was bigger than self.max_area
 
         Returns
         -------
         masks : list of ndarray
             list of 2D ndarrays of nuclei masks for the keypoints
         borders : list of tuple of int
-            list of tuples with 4 intergers, encoding the borders of the masks with respect to images
-            The order is: bound_x_left, bound_x_right, bound_y_top, bound_y_bottom 
+            list of tuples with 4 intergers, encoding the borders of the masks with respect to images.
+            The order is: bound_x_left, bound_x_right, bound_y_top, bound_y_bottom.
         area_flags : ndarray , optional
             area_flags. Will be return only if return_area_flags is True
         """
@@ -402,17 +399,19 @@ class NucleiPropagator():
                 bound_x_left, bound_x_right, bound_y_top, bound_y_bottom = mask_borders
                 mask = watershed_mask(image_clipped, keypoints_clipped)
                 
-#                 x = keypoints_clipped.x_coords()[0]
-#                 y = keypoints_clipped.y_coords()[0]
-#                 mask = mask == mask[y, x]
+
                 mask_area = np.sum(mask)
                 if mask_area < self.min_area or mask_area > self.max_area:
+                    x = keypoints_clipped.x_coords()[0]
+                    y = keypoints_clipped.y_coords()[0]
                     mask = draw_circle(mask, x, y, self.average_radius)
                     
                     if return_area_flags:
                         if mask_area < self.min_area:
+  
                             area_flags[keypoint_i] = 1
-                        elif mask_area < self.max_area:
+                        elif mask_area > self.max_area:
+             
                             area_flags[keypoint_i] = 2
                     
                 masks.append(mask)
@@ -562,7 +561,7 @@ class StainAnalyzer():
     Parameters
     ----------
     propagator : pointdet.utils.nucprop.NucleiPropagator
-        the propagator, which genereate the mask around nuclei keypoint
+        the propagator, which generate the mask around nucleus keypoint
         
     See also
     --------
@@ -584,9 +583,10 @@ class StainAnalyzer():
         
         max_matrix = np.copy(self.deconv_matrix)
         max_matrix[self.deconv_matrix < 0] *= 0
-        max_matrix[self.deconv_matrix > 0] *= -np.log(1./255.)
+        max_matrix[self.deconv_matrix > 0] *= -np.log(0.1/255.)
         max_matrix.sum(axis=1)
-        self.dab_max = max_matrix.sum(axis=1)[2]
+#         self.dab_max = max_matrix.sum(axis=1)[2]
+        self.dab_max = 1.
         self.dab_min = 0.
         
     def get_stained_image(self, image):
@@ -600,7 +600,7 @@ class StainAnalyzer():
         
         Returns
         -------
-        image_staines : ndarray
+        image_stains : ndarray
             the deconvolved iage, the shape is the same as image
             
         """
@@ -633,13 +633,13 @@ class StainAnalyzer():
         Returns
         -------
         dab_values : ndarray
-            th dab values for he keypoints
+            the dab values for he keypoints
         """
         
         image_stains = self.get_stained_image(image)
         image_dab = image_stains[:,:,2:]
         
-        masks, borders = self.propagator.generate_masks(image, keypoints)
+        masks, borders, flags = self.propagator.generate_masks(image, keypoints, return_area_flags=True)
         images_clipped, _, _ = self.propagator.generate_clipped_images(image_dab, keypoints)
         
         dab_values = []
@@ -654,4 +654,4 @@ class StainAnalyzer():
         dab_values -= self.dab_min
         dab_values /= (self.dab_max - self.dab_min)
         
-        return dab_values    
+        return dab_values, flags    

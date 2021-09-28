@@ -79,7 +79,8 @@ def get_batch_relaibility_matrix(
     targets_from_batch1, 
     targets_from_batch2, 
     similarity,
-    indexes_to_consider 
+    indexes_to_consider,
+    missings_as_classes = False
 ):
     '''
     Composes relaibility matrix for two batches.
@@ -98,11 +99,13 @@ def get_batch_relaibility_matrix(
     indexes_to_consider : iterable
         an iterable of image indexes which sould be taken into concideration. 
         All indexes must be present in both  targets_from_batch1 an targets_from_batch2
+    missings_as_classes : bool
+        wheather to consider not matched targeds as separate class (with -1 label)
         
     Returns
     -------
     relaibility_matrix : ndarray
-        relaibility matrix. The spae is (2, num_matched), where num_matched
+        relaibility matrix. The shape is (2, num_matched), where num_matched
         is the number of targets which were sucsefully matched. This number
         could not be gereater than the maximum total number of targets in
         batch1 or batch2
@@ -116,16 +119,29 @@ def get_batch_relaibility_matrix(
         sim_matrix = similarity.matrix(targets1, targets2)
 
         row_ids, col_ids = linear_sum_assignment(sim_matrix, maximize=True)
+        
+        
         rel_matrices.append(np.vstack([targets1.classes()[row_ids], targets2.classes()[col_ids]]))
+        
+        if missings_as_classes :
+            missings1 = np.setdiff1d(np.arange(len(targets1)), row_ids) 
+            missings2 = np.setdiff1d(np.arange(len(targets2)), col_ids) 
+
+
+            rel_matrices.append(np.vstack([targets1.classes()[missings1], np.ones(len(missings1)) * -1]))
+            rel_matrices.append(np.vstack([np.ones(len(missings2)) * -1, targets2.classes()[missings2] ]))
+
     relaibility_matrix = np.hstack(rel_matrices)
     
     return relaibility_matrix
+
 
 def compute_kappas(
     targets_containers,
     similarity,
     raters_list,
     indexes_to_consider,
+    missings_as_classes=False
 ):
     '''
     Compute Cohen's kappa for all raters from raters_list.  
@@ -142,6 +158,8 @@ def compute_kappas(
     indexes_to_consider : iterable
         an iterable of image indexes which sould be taken into concideration. 
         All indexes must be present in all targets_containers
+    missings_as_classes : bool
+        wheather to consider not matched targeds as separate class (with -1 label)
     
     Returns
     -------
@@ -156,7 +174,8 @@ def compute_kappas(
             targets_containers[expert_1],
             targets_containers[expert_2],
             similarity,
-            indexes_to_consider
+            indexes_to_consider,
+            missings_as_classes=missings_as_classes
         )
         kappa = cohen_kappa_score(relaibility_matrix[0], relaibility_matrix[1])
         kappas.append(kappa)

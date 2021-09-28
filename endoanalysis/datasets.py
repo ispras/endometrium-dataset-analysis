@@ -45,6 +45,7 @@ def load_image(image_path):
     return image
 
 class PointsDataset:
+    
     def __init__(
         self,
         images_list,
@@ -52,7 +53,6 @@ class PointsDataset:
         keypoints_dtype=np.int16,
         cmap_kwargs = {"cmap": cm.Set1, "period": 8}
     ):
-
 
             
         self.keypoints_dtype = keypoints_dtype
@@ -64,12 +64,13 @@ class PointsDataset:
         if type(images_list) != list:
             images_list = [images_list]
             labels_list = [labels_list]
+            
         self.images_paths = []
         self.labels_paths = []
         for images_list_path, labels_list_path in zip(images_list, labels_list):
             images_paths_current, labels_paths_current = extract_images_and_labels_paths(images_list_path, labels_list_path)
             self.images_paths += images_paths_current
-            self.labels_paths +=labels_paths_current
+            self.labels_paths += labels_paths_current
         self.cmap_kwargs = cmap_kwargs
         
     def __len__(self):
@@ -173,7 +174,6 @@ def resize_dataset(dataset_main_file_path, target_size=(256,256)):
             keypoints = load_keypoints(labels_path)
 
             if keypoints:
-                
                 keypoints = np.array(keypoints)
                 coords = keypoints[:,0:2]
                 classes = keypoints[:,2]
