@@ -19,9 +19,11 @@ def labels_path_to_mask_path(labels_path, masks_dir):
         path to file with masks
     """
     if not masks_dir:
-        return".".join(labels_path.split(".")[:-1] + ["npy"])
+        return  ".".join(labels_path.split(".")[:-1] + ["npy"])
     else:
-        return ".".join(os.path.basename(labels_path).split(".")[:-1] + ["npy"])
+
+        masks_path =  ".".join(os.path.basename(labels_path).split(".")[:-1] + ["npy"])
+        return os.path.join(masks_dir, masks_path)
 
 def check_masks_files_presence(endo_dataset, masks_dir):
     """
@@ -40,7 +42,7 @@ def check_masks_files_presence(endo_dataset, masks_dir):
         labels_path = endo_dataset.labels_paths[image_i]
         masks_path = labels_path_to_mask_path(labels_path, masks_dir)
         if os.path.exists(masks_path):
-            raise Exception("File exists and overwrite mode is disabled: %s"%masks_path) 
+            raise Exception("File exists and overwrite mode is disabled: \n%s"%os.path.abspath(masks_path)) 
 
 def generate_masks(
     image_i, 
@@ -67,7 +69,9 @@ def generate_masks(
     masks, borders, area_flags_image = propagator.generate_masks(image, keypoints, return_area_flags=True)
     masks = propagator.masks_to_image_size(image, masks, borders)
     labels_path = endo_dataset.labels_paths[image_i]
+
     masks_path = labels_path_to_mask_path(labels_path, masks_dir)
+
     
     with open(masks_path, "w+") as file:
         np.save(masks_path, masks)
