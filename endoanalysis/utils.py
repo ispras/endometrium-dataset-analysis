@@ -48,7 +48,8 @@ def generate_masks(
     image_i, 
     endo_dataset,
     propagator,
-    masks_dir
+    masks_dir,
+    area_flags = False
 ):
     """
     Generates masks for all the annotated images in the dataset
@@ -63,6 +64,9 @@ def generate_masks(
         
     masks_dir : str
         path to dir to store masks in. If empty, the masks file will be created in the same dir as labels file. 
+        
+    area_flags : bool
+        whether to store area flags. If True, the area flags will be stored with fnpy extention, which ca be read by the same means as npy files
     """
     image = endo_dataset[image_i]["image"]
     keypoints = endo_dataset[image_i]["keypoints"]
@@ -71,7 +75,13 @@ def generate_masks(
     labels_path = endo_dataset.labels_paths[image_i]
 
     masks_path = labels_path_to_mask_path(labels_path, masks_dir)
-
     
-    with open(masks_path, "w+") as file:
-        np.save(masks_path, masks)
+    
+    with open(masks_path, "wb+") as file:
+        np.save(file, masks)
+        
+    if area_flags:
+        area_flags_path = ".".join(masks_path.split(".")[:-1] + ["fnpy"])
+
+        with open(area_flags_path, "wb+") as file:
+            np.save(file, area_flags)

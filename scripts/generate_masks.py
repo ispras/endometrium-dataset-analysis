@@ -49,6 +49,12 @@ parser.add_argument(
     default="",
     help="if provided, all the masks will be stored there. If not provided, masks files will be stored near the labels files",
 )
+parser.add_argument(
+    "--area_flags",
+    dest = "area_flags",
+    action="store_true",
+    help="if provided, the area flas will be saved along with area masks",
+)
 
 args = parser.parse_args()
 
@@ -61,6 +67,7 @@ MIN_AREA = args.min_area
 MAX_AREA = args.max_area
 AVERAGE_AREA = args.avg_area
 MASKS_DIR = args.masks_dir
+AREA_FLAGS = args.area_flags
 
 if not os.path.exists(MASKS_DIR) and MASKS_DIR:
     os.makedirs(MASKS_DIR, exist_ok=True)
@@ -86,17 +93,17 @@ propagator = NucleiPropagator(
 
 
 if not OVERWRITE:
-    check_files_presence(endo_dataset, MASKS_DIR)        
+    check_masks_files_presence(endo_dataset, MASKS_DIR)        
 
 print("Generating masks...")
 if NUM_WORKERS == 1:
     with tqdm(total=len(endo_dataset)) as pbar:
         for image_i in range(len(endo_dataset)):
-            generate_masks(image_i,endo_dataset, MASKS_DIR)
+            generate_masks(image_i,endo_dataset, propagator, MASKS_DIR, AREA_FLAGS)
             pbar.update()
 else:
     def wrapper_mproc(x):
-        generate_masks(x, endo_dataset, propagator, MASKS_DIR)    
+        generate_masks(x, endo_dataset, propagator, MASKS_DIR, AREA_FLAGS)    
         
     with mproc.Pool(NUM_WORKERS) as pool:
         for _ in tqdm(pool.imap(wrapper_mproc, range(len(endo_dataset))), total = len(endo_dataset)):
