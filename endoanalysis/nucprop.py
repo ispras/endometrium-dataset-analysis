@@ -474,7 +474,7 @@ class NucleiPropagator():
                 
     
     
-    def generate_contoured_masks(self, masks, alpha, dilate = True):
+    def generate_contoured_masks(self, masks, alpha, color=(0,255,0), dilate = True):
         """
         Generates the countours of the given masks. Usful for visualisation.
         
@@ -484,6 +484,8 @@ class NucleiPropagator():
             masks to draw contours of. The shape sould be (num_masks, image_h, image_w)
         alpha : float
             the transparance of the resulting contours
+        color: tuple of int
+            color of the masks in RGB representation
         dilate : bool
             whether to dilate the resulting contours
             
@@ -492,7 +494,7 @@ class NucleiPropagator():
         contoured_masks : ndarray
             the array of masks countours
         """
-    
+        
         masks_contours = np.stack([masks]*3 , axis=-1).astype(np.uint)
         masks_contours = np.copy(masks).astype(np.uint8)
 
@@ -507,7 +509,9 @@ class NucleiPropagator():
 
 
         contoured_masks = np.stack([np.zeros_like(masks_contours)]*3 +[np.zeros_like(masks_contours)], axis=-1).astype(np.uint)
-        contoured_masks[masks_contours > 1, 1] = 255
+
+        for color_i in range(3):
+            contoured_masks[masks_contours > 1, color_i] = color[color_i]
         contoured_masks[masks_contours > 1, 3] = 255 * alpha
         return contoured_masks
     
