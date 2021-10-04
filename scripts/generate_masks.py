@@ -7,6 +7,7 @@ import numpy as np
 from endoanalysis.datasets import PointsDataset
 from endoanalysis.nucprop import NucleiPropagator
 from endoanalysis.utils import generate_masks, check_masks_files_presence
+from endoanalysis.utils import generate_masks_lists
 
 parser = argparse.ArgumentParser(description="This script generates masks from images and keypoints using watershed algorythm")
 
@@ -55,6 +56,12 @@ parser.add_argument(
     action="store_true",
     help="if provided, the area flas will be saved along with area masks",
 )
+parser.add_argument(
+    "--masks_lists",
+    dest = "masks_lists",
+    action="store_true",
+    help="if provided, the txt files with masks lists will be created near the files with labels lists. Also new master yml will be created neare the original master yml",
+)
 
 args = parser.parse_args()
 
@@ -68,6 +75,7 @@ MAX_AREA = args.max_area
 AVERAGE_AREA = args.avg_area
 MASKS_DIR = args.masks_dir
 AREA_FLAGS = args.area_flags
+MASKS_LISTS = args.masks_lists
 
 if not os.path.exists(MASKS_DIR) and MASKS_DIR:
     os.makedirs(MASKS_DIR, exist_ok=True)
@@ -93,7 +101,11 @@ propagator = NucleiPropagator(
 
 
 if not OVERWRITE:
-    check_masks_files_presence(endo_dataset, MASKS_DIR)        
+    check_masks_files_presence(endo_dataset, MASKS_DIR)   
+    
+if MASKS_LISTS:
+    generate_masks_lists(lists, MASKS_DIR, MASTER_YAML)
+
 
 print("Generating masks...")
 if NUM_WORKERS == 1:
