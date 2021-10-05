@@ -205,7 +205,7 @@ def watershed_mask(image, keypoints, num_otsu_classes=3):
     
     image_grad = compute_image_grad(image)
     mask = watershed(image_grad, markers)
-#     plt.imshow(markers)
+
     x = keypoints.x_coords()[0]
     y = keypoints.y_coords()[0]
     mask = mask == mask[y, x]
@@ -218,6 +218,76 @@ def draw_circle(image, center_x, center_y, radius):
     coords_y = coords[0]
     mask = (coords_x - center_x) ** 2 + (coords_y - center_y) ** 2 < radius ** 2
     return mask
+
+
+def generate_contoured_masks( masks, alpha, color=(0,255,0), dilate = True):
+    """
+    Generates the countours of the given masks. Usful for visualization.
+
+    Parameters
+    ----------
+    masks : ndarray
+        masks to draw contours of. The shape sould be (num_masks, image_h, image_w)
+    alpha : float
+        the transparance of the resulting contours
+    color: tuple of int
+        color of the masks in RGB representation
+    dilate : bool
+        whether to dilate the resulting contours
+
+    Returns
+    -------
+    contoured_masks : ndarray
+        the array of masks countours
+    """
+
+    masks_contours = np.stack([masks]*3 , axis=-1).astype(np.uint)
+    masks_contours = np.copy(masks).astype(np.uint8)
+
+
+    for i, mask in enumerate(masks_contours):
+        mask = mask.astype(np.uint8)
+        contours, _ = cv2.findContours(mask,cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
+        mask = cv2.drawContours(mask, contours, 0, (255,0,0), 1)
+        if dilate:
+            mask = cv2.dilate(mask, np.array([[1,1],[1,1]]))
+        masks_contours[i] = mask
+
+
+    contoured_masks = np.stack([np.zeros_like(masks_contours)]*3 +[np.zeros_like(masks_contours)], axis=-1).astype(np.uint)
+
+    for color_i in range(3):
+        contoured_masks[masks_contours > 1, color_i] = color[color_i]
+    contoured_masks[masks_contours > 1, 3] = 255 * alpha
+    return contoured_masks
+
+
+def visualize_masks(image, masks=None, alpha=1., dilate=True):
+    """
+    Visualizes the masks for a given image. 
+
+    Parameters
+    ----------
+    image : ndarray
+        image to draw the masks on
+    keypoints : KeypointsArray like
+        keypoints deifingi the muclei positions. If provided, masks should not be provided
+    masks : ndarray
+        masks to visualize. The shape must be (num_masks, image_h, image_w). 
+        If provided, keypoints must not be provided
+    alpha : float
+        the transparency of the resulting contours
+    dilate : bool
+        whether to dilate the resulting contours
+    """
+
+    contoured_masks = generate_contoured_masks(masks, alpha=alpha, dilate = dilate)
+
+    plt.imshow(image) 
+    for mask in contoured_masks:
+        plt.imshow(mask)
+    plt.show()
+
 
 class NucleiPropagator():
     """
@@ -471,55 +541,13 @@ class NucleiPropagator():
             
         return masks_image_sized
                 
-                
-    
-    
-    def generate_contoured_masks(self, masks, alpha, color=(0,255,0), dilate = True):
-        """
-        Generates the countours of the given masks. Usful for visualisation.
-        
-        Parameters
-        ----------
-        masks : ndarray
-            masks to draw contours of. The shape sould be (num_masks, image_h, image_w)
-        alpha : float
-            the transparance of the resulting contours
-        color: tuple of int
-            color of the masks in RGB representation
-        dilate : bool
-            whether to dilate the resulting contours
             
-        Returns
-        -------
-        contoured_masks : ndarray
-            the array of masks countours
-        """
-        
-        masks_contours = np.stack([masks]*3 , axis=-1).astype(np.uint)
-        masks_contours = np.copy(masks).astype(np.uint8)
-
-
-        for i, mask in enumerate(masks_contours):
-            mask = mask.astype(np.uint8)
-            contours, _ = cv2.findContours(mask,cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
-            mask = cv2.drawContours(mask, contours, 0, (255,0,0), 1)
-            if dilate:
-                mask = cv2.dilate(mask, np.array([[1,1],[1,1]]))
-            masks_contours[i] = mask
-
-
-        contoured_masks = np.stack([np.zeros_like(masks_contours)]*3 +[np.zeros_like(masks_contours)], axis=-1).astype(np.uint)
-
-        for color_i in range(3):
-            contoured_masks[masks_contours > 1, color_i] = color[color_i]
-        contoured_masks[masks_contours > 1, 3] = 255 * alpha
-        return contoured_masks
     
     
-    def visualise_masks(self, image, keypoints=None, masks=None, alpha=1., dilate=True):
+    def visualize_masks(self, image, keypoints=None, masks=None, alpha=1., dilate=True):
         """
-        Visualises the masks for a given imaage. Can generate them from the keypoints,
-        or use the pregenerated masks
+        Visualizes the masks for a given image. Can generate them from the keypoints,
+        or use the pregenerated masks.
         
         Parameters
         ----------
@@ -545,16 +573,7 @@ class NucleiPropagator():
             masks, borders = self.generate_masks(image, keypoints)
             masks = self.masks_to_image_size(image, masks, borders)
         
-        contoured_masks = self.generate_contoured_masks( masks, alpha=alpha, dilate = dilate)
-            
-        full_mask = masks.sum(axis=0) > 0 
-
-
-        plt.imshow(image) 
-        for mask in contoured_masks:
-            plt.imshow(mask)
-        plt.show()
-
+        visualize_masks(image, masks=masks, alpha=alpha, dilate=dilate)
     
     
 class StainAnalyzer():
@@ -658,4 +677,7 @@ class StainAnalyzer():
         dab_values -= self.dab_min
         dab_values /= (self.dab_max - self.dab_min)
         
-        return dab_values, flags    
+        return dab_values, flags 
+    
+    
+    
