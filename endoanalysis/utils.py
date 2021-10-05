@@ -25,10 +25,10 @@ def labels_path_to_masks_path(labels_path, masks_dir):
         path to file with masks
     """
     if not masks_dir:
-        return  ".".join(labels_path.split(".")[:-1] + ["npy"])
+        return  ".".join(labels_path.split(".")[:-1] + ["npz"])
     else:
 
-        masks_path =  ".".join(os.path.basename(labels_path).split(".")[:-1] + ["npy"])
+        masks_path =  ".".join(os.path.basename(labels_path).split(".")[:-1] + ["npz"])
         return os.path.join(masks_dir, masks_path)
 
 def check_masks_files_presence(endo_dataset, masks_dir):
@@ -103,7 +103,8 @@ def generate_masks(
     endo_dataset,
     propagator,
     masks_dir,
-    area_flags = False
+    area_flags = False,
+    compress = False
 ):
     """
     Generates masks for all the annotated images in the dataset
@@ -120,25 +121,34 @@ def generate_masks(
         path to dir to store masks in. If empty, the masks file will be created in the same dir as labels file. 
         
     area_flags : bool
-        whether to store area flags. If True, the area flags will be stored with fnpy extention, which ca be read by the same means as npy files
+        whether to store area flags. If True, the area flags will be stored with fnpy extention, which can be read by the same means as npy files
     """
     image = endo_dataset[image_i]["image"]
     keypoints = endo_dataset[image_i]["keypoints"]
+    classes = np.array(keypoints.classes())
     masks, borders, area_flags_image = propagator.generate_masks(image, keypoints, return_area_flags=True)
     masks = propagator.masks_to_image_size(image, masks, borders)
     labels_path = endo_dataset.labels_paths[image_i]
 
     masks_path = labels_path_to_masks_path(labels_path, masks_dir)
     
+    arrays_to_save = {
+        "masks": masks,
+        "classes": classes
+    }
     
-    with open(masks_path, "wb+") as file:
-        np.save(file, masks)
-        
     if area_flags:
-        area_flags_path = ".".join(masks_path.split(".")[:-1] + ["fnpy"])
+        arrays_to_save['area_flags'] = (area_flags,)
+            
+    with open(masks_path, "wb+") as file:
+        if compress:
 
-        with open(area_flags_path, "wb+") as file:
-            np.save(file, area_flags)
+            np.savez_compressed(file, **arrays_to_save)
+        else:
+            np.savez(file, **arrays_to_save)
+        
+    
+
             
 def load_masks_areas(paths_list):
     """
@@ -156,12 +166,12 @@ def load_masks_areas(paths_list):
     """
     
     mask_areas = []
-#     print("Loading masks areas...")
+
     with tqdm(total=len(paths_list), desc="Loading mask areas") as pbar:
         for masks_path in paths_list:
  
             with open(masks_path, "rb") as file:
-                masks = np.load(file)
+                masks = np.load(file)["masks"]
                 mask_areas += [x.sum() for x in masks]
                 pbar.update()
     print("Done!")

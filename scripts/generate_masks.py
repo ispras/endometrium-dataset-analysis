@@ -63,6 +63,13 @@ parser.add_argument(
     help="if provided, the txt files with masks lists will be created near the files with labels lists. Also new master yml will be created neare the original master yml",
 )
 
+parser.add_argument(
+    "--compress",
+    dest = "compress",
+    action="store_true",
+    help="if provided, the resulting npz files will be compressed",
+)
+
 args = parser.parse_args()
 
 
@@ -76,6 +83,7 @@ AVERAGE_AREA = args.avg_area
 MASKS_DIR = args.masks_dir
 AREA_FLAGS = args.area_flags
 MASKS_LISTS = args.masks_lists
+COMPRESS = args.compress
 
 if not os.path.exists(MASKS_DIR) and MASKS_DIR:
     os.makedirs(MASKS_DIR, exist_ok=True)
@@ -111,11 +119,11 @@ print("Generating masks...")
 if NUM_WORKERS == 1:
     with tqdm(total=len(endo_dataset)) as pbar:
         for image_i in range(len(endo_dataset)):
-            generate_masks(image_i,endo_dataset, propagator, MASKS_DIR, AREA_FLAGS)
+            generate_masks(image_i,endo_dataset, propagator, MASKS_DIR, AREA_FLAGS, COMPRESS)
             pbar.update()
 else:
     def wrapper_mproc(x):
-        generate_masks(x, endo_dataset, propagator, MASKS_DIR, AREA_FLAGS)    
+        generate_masks(x, endo_dataset, propagator, MASKS_DIR, AREA_FLAGS, COMPRESS)    
         
     with mproc.Pool(NUM_WORKERS) as pool:
         for _ in tqdm(pool.imap(wrapper_mproc, range(len(endo_dataset))), total = len(endo_dataset)):
