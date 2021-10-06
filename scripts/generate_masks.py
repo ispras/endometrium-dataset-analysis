@@ -9,11 +9,15 @@ from endoanalysis.nucprop import NucleiPropagator
 from endoanalysis.utils import generate_masks, check_masks_files_presence
 from endoanalysis.utils import generate_masks_lists
 
-parser = argparse.ArgumentParser(description="This script generates masks from images and keypoints using watershed algorythm")
+parser = argparse.ArgumentParser(description="This script generates masks from images and keypoints using watershed algorithm")
 
 parser.add_argument(
     "--master", type=str,  help="yml file with paths to lists of images and labels", required=True
 )
+# parser.add_argument(
+#     "--new_master", type=str, default="", help="yml file with paths to lists of images and labels"
+# )
+
 parser.add_argument(
     "--overwrite", dest='overwrite', action='store_true', help="whether overwrite masks or not"
 )
@@ -44,49 +48,75 @@ parser.add_argument(
     default=np.inf,
     help="maximal accepted watershed mask area. If watershed mask is larger, a circile of average area will be created",
 )
-parser.add_argument(
-    "--masks_dir",
-    type=str,
-    default="",
-    help="if provided, all the masks will be stored there. If not provided, masks files will be stored near the labels files",
-)
+# parser.add_argument(
+#     "--masks_dir",
+#     type=str,
+#     default="",
+#     help="if provided, all the masks will be stored there. If not provided, masks files will be stored near the labels files",
+# )
 parser.add_argument(
     "--area_flags",
     dest = "area_flags",
     action="store_true",
-    help="if provided, the area flas will be saved along with area masks",
+    help="if provided, the area flags will be saved along with area masks",
 )
+# parser.add_argument(
+#     "--masks_lists",
+#     dest = "masks_lists",
+#     action="store_true",
+#     help="if provided, the txt files with masks lists will be created near the files with labels lists. Also new master yml will be created neare the original master yml",
+# )
+
 parser.add_argument(
-    "--masks_lists",
-    dest = "masks_lists",
+    "--new_master_dir",
+    type=str,
+    default="",
+    help="if provided, new master yml and files lists will be saved in that dir. Cannot be used with --add_masters."
+)
+
+parser.add_argument(
+    "--add_masters",
+    dest = "add_masters",
     action="store_true",
-    help="if provided, the txt files with masks lists will be created near the files with labels lists. Also new master yml will be created neare the original master yml",
+    help="if provided, new master yml will be saved near initial master yml, and new files lists will be saved near orgignal labels lists. Cannot be used with --new_master_dir"
 )
 
 parser.add_argument(
     "--compress",
     dest = "compress",
     action="store_true",
-    help="if provided, the resulting npz files will be compressed",
+    help="if provided, the resulting npz files will be compressed"
 )
 
 args = parser.parse_args()
 
 
 MASTER_YAML = args.master
+# NEW_MASTER_YAML = args.new_master
 OVERWRITE = args.overwrite
 NUM_WORKERS = args.workers
 WINDOW_SIZE = args.window
 MIN_AREA = args.min_area
 MAX_AREA = args.max_area
 AVERAGE_AREA = args.avg_area
-MASKS_DIR = args.masks_dir
+# MASKS_DIR = args.masks_dir
 AREA_FLAGS = args.area_flags
-MASKS_LISTS = args.masks_lists
+# MASKS_LISTS = args.masks_lists
 COMPRESS = args.compress
+NEW_MASTER_DIR = args.new_master_dir
+ADD_MASTERS = args.add_masters
 
-if not os.path.exists(MASKS_DIR) and MASKS_DIR:
-    os.makedirs(MASKS_DIR, exist_ok=True)
+if NEW_MASTER_DIR and ADD_MASTERS:
+    raise Exception("NEW_MASTER_DIR and ADD_MASTERS cannot be used simultaneously")
+
+if NEW_MASTER_DIR:    
+    masks_dir = os.path.join(NEW_MASTER_DIR, "masks")
+    os.makedirs(masks_dir, exist_ok=True)
+else:
+    masks_dir = None
+    
+# if not os.path.exists(MASKS_DIR) and MASKS_DIR:
+#     os.makedirs(MASKS_DIR, exist_ok=True)
 
 with open(MASTER_YAML, "r") as file:
     lists = yaml.safe_load(file)
@@ -109,29 +139,34 @@ propagator = NucleiPropagator(
 
 
 if not OVERWRITE:
-    check_masks_files_presence(endo_dataset, MASKS_DIR)   
+    check_masks_files_presence(endo_dataset, masks_dir)   
     
-if MASKS_LISTS:
-    generate_masks_lists(lists, MASKS_DIR, MASTER_YAML)
+# if MASKS_LISTS:
+#     generate_masks_lists(lists, MASKS_DIR, MASTER_YAML, NEW_MASTER_YAML)
 
+if NEW_MASTER_DIR:
+    generate_masks_lists(lists, masks_dir, MASTER_YAML, NEW_MASTER_DIR)
+elif ADD_MASTERS:
+    generate_masks_lists(lists, masks_dir, MASTER_YAML, None)
+    
 
 print("Generating masks...")
 if NUM_WORKERS == 1:
     with tqdm(total=len(endo_dataset)) as pbar:
         for image_i in range(len(endo_dataset)):
-            generate_masks(image_i,endo_dataset, propagator, MASKS_DIR, AREA_FLAGS, COMPRESS)
+            generate_masks(image_i,endo_dataset, propagator, masks_dir, AREA_FLAGS, COMPRESS)
             pbar.update()
 else:
     def wrapper_mproc(x):
-        generate_masks(x, endo_dataset, propagator, MASKS_DIR, AREA_FLAGS, COMPRESS)    
+        generate_masks(x, endo_dataset, propagator, masks_dir, AREA_FLAGS, COMPRESS)    
         
     with mproc.Pool(NUM_WORKERS) as pool:
         for _ in tqdm(pool.imap(wrapper_mproc, range(len(endo_dataset))), total = len(endo_dataset)):
             pass
 print("Done!")
 
-if MASKS_DIR:
-    print("The masks are saved in: \n %s"%os.path.abspath(MASKS_DIR))
+if masks_dir:
+    print("The masks are saved in: \n %s"%os.path.abspath(masks_dir))
 else:
     print("The masks are saved near the labels files.")
 

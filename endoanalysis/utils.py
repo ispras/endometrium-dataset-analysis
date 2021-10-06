@@ -51,7 +51,7 @@ def check_masks_files_presence(endo_dataset, masks_dir):
             raise Exception("File exists and overwrite mode is disabled: \n%s"%os.path.abspath(masks_path)) 
             
             
-def generate_masks_lists(lists, masks_dir, master_yml):
+def generate_masks_lists(lists, masks_dir, master_yml, new_master_dir=""):
     """
     Genertates txt files with paths to masks and saves this files
     near the files with labels lists.
@@ -67,17 +67,37 @@ def generate_masks_lists(lists, masks_dir, master_yml):
         
     master_yml : str
         path to master yml file. 
-        New master yml, which hs th paths to masks lists, will be soterd nearby and will have postfix "with_masks"
+        New master yml, which has th paths to masks lists, will be soterd nearby and will have postfix "with_masks"
+        
+    new_master_dir : str
+        path to new master yml. 
+        If empty or not provided, new master yml file will not be created
     """
     lists = copy.deepcopy(lists)
     lists["masks_lists"] = []
+    
+    if new_master_dir:
+        masks_lists_dir = os.path.join(new_master_dir, "mask_lists")
+        os.makedirs(masks_lists_dir, exist_ok=True)
 
+    new_master_yml = "_".join(os.path.basename(master_yml).split(".") + ["with_masks.yml"])    
+    if new_master_dir:
+        new_master_yml = os.path.join(new_master_dir, new_master_yml)
+    else:
+        new_master_yml = os.path.join(os.path.dirname(master_yml), new_master_yml)
+        
     for list_i in range(len(lists["image_lists"])):
         masks_paths = []
         images_list_path = lists["image_lists"][list_i]
         labels_list_path = lists["labels_lists"][list_i]
-        masks_list_path = os.path.join(os.path.dirname(labels_list_path), "masks.txt")
-        lists["masks_lists"].append(masks_list_path)
+        if new_master_dir:
+            masks_list_path = os.path.join(masks_lists_dir, "masks_%i.txt"%list_i)
+        else:
+            masks_list_path = os.path.join(os.path.dirname(labels_list_path), "masks.txt")
+        
+        masks_list_path_to_save = os.path.relpath(masks_list_path, start=new_master_yml)
+        masks_list_path_to_save = os.path.normpath(masks_list_path_to_save)                  
+        lists["masks_lists"].append(masks_list_path_to_save)
         _, labels_paths = extract_images_and_labels_paths(images_list_path, labels_list_path)
         for labels_path in labels_paths:
 
@@ -89,9 +109,9 @@ def generate_masks_lists(lists, masks_dir, master_yml):
 
         with open(masks_list_path, "w+") as file:
             file.writelines(masks_paths)
-            
-    new_yml_path = "_".join([".".join(master_yml.split(".")[:-1])] + ["with_masks.yml"] ) 
-    with open(new_yml_path, "w+") as file:
+    
+   
+    with open(new_master_yml, "w+") as file:
         yaml.safe_dump(lists, file)
             
           
@@ -121,7 +141,7 @@ def generate_masks(
         path to dir to store masks in. If empty, the masks file will be created in the same dir as labels file. 
         
     area_flags : bool
-        whether to store area flags. If True, the area flags will be stored with fnpy extention, which can be read by the same means as npy files
+        whether to store area flags. 
     """
     image = endo_dataset[image_i]["image"]
     keypoints = endo_dataset[image_i]["keypoints"]
@@ -190,3 +210,5 @@ def decorate_areas_distr(fig, ax, impath="", caption="", dpi=300):
         ax.set_caption(caption)
     if impath:
         fig.savefig(impath, dpi=dpi)
+
+        
