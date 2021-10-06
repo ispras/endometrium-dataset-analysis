@@ -591,9 +591,8 @@ class StainAnalyzer():
     pointdet.utils.nucprop.NucleiPropagator
         
     """
-    def __init__(self, propagator):
+    def __init__(self):
         
-        self.propagator = propagator
         
         stain_matrix = np.matrix([
             [0.65, 0.70, 0.29],
@@ -601,14 +600,13 @@ class StainAnalyzer():
             [0.27, 0.59, 0.78]
         ])
         
-        self.propagator = propagator
         self.deconv_matrix = np.linalg.inv(stain_matrix)
         
         max_matrix = np.copy(self.deconv_matrix)
         max_matrix[self.deconv_matrix < 0] *= 0
         max_matrix[self.deconv_matrix > 0] *= -np.log(0.1/255.)
         max_matrix.sum(axis=1)
-#         self.dab_max = max_matrix.sum(axis=1)[2]
+
         self.dab_max = 1.
         self.dab_min = 0.
         
@@ -634,7 +632,7 @@ class StainAnalyzer():
         
         return image_stains
     
-    def calulate_dab_values(self, image, keypoints):
+    def calulate_dab_values(self, image, masks):
         """
         Calculates DAB values for each keypoint on the image.
         
@@ -656,28 +654,28 @@ class StainAnalyzer():
         Returns
         -------
         dab_values : ndarray
-            the dab values for he keypoints
+            the dab values for the keypoints
         """
         
         image_stains = self.get_stained_image(image)
         image_dab = image_stains[:,:,2:]
         
-        masks, borders, flags = self.propagator.generate_masks(image, keypoints, return_area_flags=True)
-        images_clipped, _, _ = self.propagator.generate_clipped_images(image_dab, keypoints)
-        
-        dab_values = []
-        for image_clipped, mask in zip(images_clipped, masks):
-            pixel_values = image_clipped[mask]
-            pixel_values[pixel_values<0] = 0.
-            mean_value = pixel_values.mean()
 
+        dab_values = []
+        for mask in masks:
+            
+            pixel_values = image_dab[mask]
+#             pixel_values[pixel_values<0] = 0.
+            
+            mean_value = pixel_values.mean()
+            
             dab_values.append(mean_value)
 
         dab_values = np.array(dab_values)
         dab_values -= self.dab_min
         dab_values /= (self.dab_max - self.dab_min)
         
-        return dab_values, flags 
+        return dab_values 
     
     
     

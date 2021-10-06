@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from tqdm import  tqdm
 
 from endoanalysis.datasets import extract_images_and_labels_paths
+from endoanalysis.nucprop import StainAnalyzer
 
 def labels_path_to_masks_path(labels_path, masks_dir):
     """
@@ -80,7 +81,8 @@ def generate_masks_lists(lists, masks_dir, master_yml, new_master_dir=""):
         masks_lists_dir = os.path.join(new_master_dir, "mask_lists")
         os.makedirs(masks_lists_dir, exist_ok=True)
 
-    new_master_yml = "_".join(os.path.basename(master_yml).split(".") + ["with_masks.yml"])    
+    new_master_yml = "_".join(os.path.basename(master_yml).split(".")[:-1] + ["with_masks.yml"])    
+    
     if new_master_dir:
         new_master_yml = os.path.join(new_master_dir, new_master_yml)
     else:
@@ -95,9 +97,8 @@ def generate_masks_lists(lists, masks_dir, master_yml, new_master_dir=""):
         else:
             masks_list_path = os.path.join(os.path.dirname(labels_list_path), "masks.txt")
         
-        masks_list_path_to_save = os.path.relpath(masks_list_path, start=new_master_yml)
-        masks_list_path_to_save = os.path.normpath(masks_list_path_to_save)                  
-        lists["masks_lists"].append(masks_list_path_to_save)
+        
+        lists["masks_lists"].append(masks_list_path)
         _, labels_paths = extract_images_and_labels_paths(images_list_path, labels_list_path)
         for labels_path in labels_paths:
 
@@ -110,7 +111,14 @@ def generate_masks_lists(lists, masks_dir, master_yml, new_master_dir=""):
         with open(masks_list_path, "w+") as file:
             file.writelines(masks_paths)
     
-   
+
+    for list_type, paths_list in lists.items():
+        new_paths_list = []
+        for path in paths_list:
+            new_path = os.path.relpath(path, start=os.path.dirname(new_master_yml))
+            new_paths_list.append(new_path)
+        lists[list_type] = new_paths_list
+
     with open(new_master_yml, "w+") as file:
         yaml.safe_dump(lists, file)
             
@@ -210,5 +218,58 @@ def decorate_areas_distr(fig, ax, impath="", caption="", dpi=300):
         ax.set_caption(caption)
     if impath:
         fig.savefig(impath, dpi=dpi)
-
         
+        
+def parse_master_yaml(yaml_path):
+    """
+    Imports master yaml and converts paths to make the usable from inside the script
+    
+    Parameters
+    ----------
+    yaml_path : str
+        pathe to master yaml from the script
+    
+    Returns
+    -------
+    lists : dict of list of str
+        dict with lists pf converted paths
+    """
+    with open(yaml_path, "r") as file:
+        lists = yaml.safe_load(file)
+        
+    
+    for list_type, paths_list in lists.items():
+        new_paths_list = []
+        for path in paths_list:
+            new_path = os.path.join(os.path.dirname(yaml_path), path)
+            new_path = os.path.normpath(new_path)
+            new_paths_list.append(new_path)
+        lists[list_type] = new_paths_list
+
+
+    return lists
+
+def calculate_dab_values(dataset):
+    """
+    Calcuates dab values for a given MasksDataset
+    
+    Parameters
+    ----------
+    dataset : endoanalysis.datasets.MasksDataset
+        the dataset with the images and masks
+    
+    Returns
+    -------
+    dab_values : ndarray
+        array with the dab values for all nuclei in the dataset
+    """
+    stain_analyzer = StainAnalyzer()
+    dab_values = []
+    with tqdm(total=len(dataset)) as pbar:
+        for image_i in range(len(dataset)):
+            image = dataset[image_i]["image"]
+            masks = dataset[image_i]["masks"]
+            dab_values_image = stain_analyzer.calulate_dab_values(image, masks)
+            dab_values.append(dab_values_image)
+            pbar.update()
+    return np.concatenate(dab_values)

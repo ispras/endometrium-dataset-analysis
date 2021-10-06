@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib import patches, cm
 
 from endoanalysis.targets import KeypointsTruthArray, KeypointsTruthBatchArray, keypoints_list_to_batch, load_keypoints
-
+from endoanalysis.nucprop import visualize_masks
 
 def extract_images_and_labels_paths(images_list_file, labels_list_file):
     
@@ -156,7 +156,63 @@ class PointsDataset:
 
         return return_dict
 
-                
+          
+class MasksDataset:
+    
+    def __init__(
+        self,
+        images_list,
+        masks_list,
+        cmap_kwargs = {"cmap": cm.Set1, "period": 8}
+    ):
+
+            
+        
+        if type(images_list) != type(masks_list):
+            raise Exception("images_list and masks_list should have the same type")
+            
+        if type(images_list) != list:
+            images_list = [images_list]
+            masks_list = [masks_list]
+            
+        self.images_paths = []
+        self.masks_paths = []
+        for images_list_path, masks_list_path in zip(images_list, masks_list):
+            images_paths_current, masks_paths_current = extract_images_and_labels_paths(images_list_path, masks_list_path)
+            self.images_paths += images_paths_current
+            self.masks_paths += masks_paths_current
+        self.cmap_kwargs = cmap_kwargs
+        
+    def __len__(self):
+        return len(self.images_paths)
+
+    def __getitem__(self, x):
+        
+        masks_array = np.load(self.masks_paths[x])
+
+        return {
+            "image": load_image(self.images_paths[x]),
+            "masks": masks_array["masks"],
+            "classes": masks_array["classes"]
+            
+        }
+
+
+    def visualize(
+        self,
+        x,
+        show_labels=True,
+        image_key="image",
+
+        cmap_kwargs = None 
+    ):
+        
+        if cmap_kwargs is None:
+            cmap_kwargs = self.cmap_kwargs
+            
+        sample = self[x]
+        image = sample[image_key]
+        visualize_masks(sample["image"], sample["masks"])
                 
 def resize_dataset(dataset_main_file_path, target_size=(256,256)):
     

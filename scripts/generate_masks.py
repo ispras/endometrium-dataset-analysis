@@ -2,21 +2,17 @@ import os
 import multiprocessing as mproc
 import argparse
 from tqdm import tqdm
-import yaml
 import numpy as np
 from endoanalysis.datasets import PointsDataset
 from endoanalysis.nucprop import NucleiPropagator
 from endoanalysis.utils import generate_masks, check_masks_files_presence
-from endoanalysis.utils import generate_masks_lists
+from endoanalysis.utils import generate_masks_lists, parse_master_yaml
 
 parser = argparse.ArgumentParser(description="This script generates masks from images and keypoints using watershed algorithm")
 
 parser.add_argument(
     "--master", type=str,  help="yml file with paths to lists of images and labels", required=True
 )
-# parser.add_argument(
-#     "--new_master", type=str, default="", help="yml file with paths to lists of images and labels"
-# )
 
 parser.add_argument(
     "--overwrite", dest='overwrite', action='store_true', help="whether overwrite masks or not"
@@ -48,24 +44,13 @@ parser.add_argument(
     default=np.inf,
     help="maximal accepted watershed mask area. If watershed mask is larger, a circile of average area will be created",
 )
-# parser.add_argument(
-#     "--masks_dir",
-#     type=str,
-#     default="",
-#     help="if provided, all the masks will be stored there. If not provided, masks files will be stored near the labels files",
-# )
+
 parser.add_argument(
     "--area_flags",
     dest = "area_flags",
     action="store_true",
     help="if provided, the area flags will be saved along with area masks",
 )
-# parser.add_argument(
-#     "--masks_lists",
-#     dest = "masks_lists",
-#     action="store_true",
-#     help="if provided, the txt files with masks lists will be created near the files with labels lists. Also new master yml will be created neare the original master yml",
-# )
 
 parser.add_argument(
     "--new_master_dir",
@@ -92,16 +77,13 @@ args = parser.parse_args()
 
 
 MASTER_YAML = args.master
-# NEW_MASTER_YAML = args.new_master
 OVERWRITE = args.overwrite
 NUM_WORKERS = args.workers
 WINDOW_SIZE = args.window
 MIN_AREA = args.min_area
 MAX_AREA = args.max_area
 AVERAGE_AREA = args.avg_area
-# MASKS_DIR = args.masks_dir
 AREA_FLAGS = args.area_flags
-# MASKS_LISTS = args.masks_lists
 COMPRESS = args.compress
 NEW_MASTER_DIR = args.new_master_dir
 ADD_MASTERS = args.add_masters
@@ -115,11 +97,9 @@ if NEW_MASTER_DIR:
 else:
     masks_dir = None
     
-# if not os.path.exists(MASKS_DIR) and MASKS_DIR:
-#     os.makedirs(MASKS_DIR, exist_ok=True)
 
-with open(MASTER_YAML, "r") as file:
-    lists = yaml.safe_load(file)
+
+lists = parse_master_yaml(MASTER_YAML)
 
 cmap = {0: "red", 1: "green", 2: "blue"}
 
@@ -141,8 +121,6 @@ propagator = NucleiPropagator(
 if not OVERWRITE:
     check_masks_files_presence(endo_dataset, masks_dir)   
     
-# if MASKS_LISTS:
-#     generate_masks_lists(lists, MASKS_DIR, MASTER_YAML, NEW_MASTER_YAML)
 
 if NEW_MASTER_DIR:
     generate_masks_lists(lists, masks_dir, MASTER_YAML, NEW_MASTER_DIR)
