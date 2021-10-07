@@ -1,8 +1,8 @@
 import argparse
 import os
 import numpy as np
-from endoanalysis.datasets import MasksDataset
-from endoanalysis.utils import parse_master_yaml, calculate_dab_values
+from endoanalysis.datasets import MasksDataset, parse_master_yaml
+from endoanalysis.utils import calculate_dab_values
 
 
 parser = argparse.ArgumentParser(description="This script calculates dab values for a given dataset with masks.")

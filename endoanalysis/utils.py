@@ -1,6 +1,5 @@
 import os
 import copy
-import yaml
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import  tqdm
@@ -220,34 +219,7 @@ def decorate_areas_distr(fig, ax, xlabel="", ylabel="", impath="",  caption="", 
         fig.savefig(impath, dpi=dpi)
         
         
-def parse_master_yaml(yaml_path):
-    """
-    Imports master yaml and converts paths to make the usable from inside the script
-    
-    Parameters
-    ----------
-    yaml_path : str
-        pathe to master yaml from the script
-    
-    Returns
-    -------
-    lists : dict of list of str
-        dict with lists pf converted paths
-    """
-    with open(yaml_path, "r") as file:
-        lists = yaml.safe_load(file)
-        
-    
-    for list_type, paths_list in lists.items():
-        new_paths_list = []
-        for path in paths_list:
-            new_path = os.path.join(os.path.dirname(yaml_path), path)
-            new_path = os.path.normpath(new_path)
-            new_paths_list.append(new_path)
-        lists[list_type] = new_paths_list
 
-
-    return lists
 
 def calculate_dab_values(dataset):
     """

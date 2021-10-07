@@ -1,11 +1,16 @@
 import os
 import cv2
+import yaml
+from tqdm import tqdm
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import patches, cm
-
+import albumentations as A
 from endoanalysis.targets import KeypointsTruthArray, KeypointsTruthBatchArray, keypoints_list_to_batch, load_keypoints
 from endoanalysis.nucprop import visualize_masks
+
+
+
 
 def extract_images_and_labels_paths(images_list_file, labels_list_file):
     
@@ -22,6 +27,27 @@ def extract_images_and_labels_paths(images_list_file, labels_list_file):
     check_images_and_labels_pathes(images, labels)
     
     return images, labels
+
+
+
+def agregate_images_and_labels_paths(images_lists, labels_lists):
+    
+    if type(images_lists) != type(labels_lists):
+            raise Exception("images_list_files and labels_list_file should have the same type")
+            
+    if type(images_lists) != list:
+        images_lists = [images_lists]
+        labels_lists = [labels_lists]
+            
+    images_paths = []
+    labels_paths = []
+    for images_list_path, labels_list_path in zip(images_lists, labels_lists):
+        images_paths_current, labels_paths_current = extract_images_and_labels_paths(images_list_path, labels_list_path)
+        images_paths += images_paths_current
+        labels_paths += labels_paths_current
+        
+    return images_paths, labels_paths
+
 
 def check_images_and_labels_pathes(images_paths, labels_paths):
     
@@ -51,27 +77,14 @@ class PointsDataset:
         self,
         images_list,
         labels_list,
-        keypoints_dtype=np.int16,
+        keypoints_dtype=np.float,
         cmap_kwargs = {"cmap": cm.Set1, "period": 8}
     ):
 
             
         self.keypoints_dtype = keypoints_dtype
-        # reading images_list
-        
-        if type(images_list) != type(labels_list):
-            raise Exception("images_list_files and labels_list_file should have the same type")
-            
-        if type(images_list) != list:
-            images_list = [images_list]
-            labels_list = [labels_list]
-            
-        self.images_paths = []
-        self.labels_paths = []
-        for images_list_path, labels_list_path in zip(images_list, labels_list):
-            images_paths_current, labels_paths_current = extract_images_and_labels_paths(images_list_path, labels_list_path)
-            self.images_paths += images_paths_current
-            self.labels_paths += labels_paths_current
+ 
+        self.images_paths, self.labels_paths = agregate_images_and_labels_paths(images_list, labels_list,)
         self.cmap_kwargs = cmap_kwargs
         
     def __len__(self):
@@ -214,20 +227,52 @@ class MasksDataset:
         image = sample[image_key]
         visualize_masks(sample["image"], sample["masks"])
                 
-def resize_dataset(dataset_main_file_path, target_size=(256,256)):
+# def resize_dataset_depr(dataset_main_file_path, target_size=(256,256)):
+    
+#     transorm = A.Compose([A.Resize(height=target_size[0], width=target_size[1])], keypoint_params=A.KeypointParams(format="xy"))
+#     dataset_dir = os.path.dirname(dataset_main_file_path)
+    
+#     with open(dataset_main_file_path, "r") as main_file:
+#         lines = main_file.readlines()
+#         for line in lines:
+#             image_path = os.path.join(dataset_dir, line.strip())
+
+#             image = image = cv2.imread(image_path)
+#             labels_path  = label_path_from_image_path(line)
+#             labels_path = os.path.join(dataset_dir, labels_path)
+       
+#             keypoints = load_keypoints(labels_path)
+
+#             if keypoints:
+#                 keypoints = np.array(keypoints)
+#                 coords = keypoints[:,0:2]
+#                 classes = keypoints[:,2]
+#             else: 
+#                 coords = []
+#             transformed = transorm(image = image, keypoints=coords)
+
+#             cv2.imwrite(image_path, transformed["image"])
+            
+#             labels_lines = [
+#                 " ".join([str(int(y)) for y in label] + [str(class_id)]) + " \n"
+#                 for label, class_id in zip(transformed["keypoints"], classes)
+#                 ]
+            
+#             os.remove(labels_path)
+
+#             with open(labels_path, "w+") as labels_file:
+#                 labels_file.writelines(labels_lines)
+                
+def resize_dataset(image_paths, labels_paths, target_size=(256,256)):
     
     transorm = A.Compose([A.Resize(height=target_size[0], width=target_size[1])], keypoint_params=A.KeypointParams(format="xy"))
-    dataset_dir = os.path.dirname(dataset_main_file_path)
+
     
-    with open(dataset_main_file_path, "r") as main_file:
-        lines = main_file.readlines()
-        for line in lines:
-            image_path = os.path.join(dataset_dir, line.strip())
+    with tqdm(total=len(image_paths)) as pbar:
+        for image_path, labels_path in zip(image_paths, labels_paths):
 
             image = image = cv2.imread(image_path)
-            labels_path  = label_path_from_image_path(line)
-            labels_path = os.path.join(dataset_dir, labels_path)
-       
+
             keypoints = load_keypoints(labels_path)
 
             if keypoints:
@@ -239,15 +284,43 @@ def resize_dataset(dataset_main_file_path, target_size=(256,256)):
             transformed = transorm(image = image, keypoints=coords)
 
             cv2.imwrite(image_path, transformed["image"])
-            
+
             labels_lines = [
                 " ".join([str(int(y)) for y in label] + [str(class_id)]) + " \n"
                 for label, class_id in zip(transformed["keypoints"], classes)
                 ]
-            
+
             os.remove(labels_path)
 
             with open(labels_path, "w+") as labels_file:
                 labels_file.writelines(labels_lines)
-                
+            pbar.update()
+            
+def parse_master_yaml(yaml_path):
+    """
+    Imports master yaml and converts paths to make the usable from inside the script
     
+    Parameters
+    ----------
+    yaml_path : str
+        pathe to master yaml from the script
+    
+    Returns
+    -------
+    lists : dict of list of str
+        dict with lists pf converted paths
+    """
+    with open(yaml_path, "r") as file:
+        lists = yaml.safe_load(file)
+        
+    
+    for list_type, paths_list in lists.items():
+        new_paths_list = []
+        for path in paths_list:
+            new_path = os.path.join(os.path.dirname(yaml_path), path)
+            new_path = os.path.normpath(new_path)
+            new_paths_list.append(new_path)
+        lists[list_type] = new_paths_list
+
+
+    return lists

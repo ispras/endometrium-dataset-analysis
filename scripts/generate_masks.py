@@ -3,10 +3,10 @@ import multiprocessing as mproc
 import argparse
 from tqdm import tqdm
 import numpy as np
-from endoanalysis.datasets import PointsDataset
+from endoanalysis.datasets import PointsDataset, parse_master_yaml
 from endoanalysis.nucprop import NucleiPropagator
 from endoanalysis.utils import generate_masks, check_masks_files_presence
-from endoanalysis.utils import generate_masks_lists, parse_master_yaml
+from endoanalysis.utils import generate_masks_lists
 
 parser = argparse.ArgumentParser(description="This script generates masks from images and keypoints using watershed algorithm")
 
