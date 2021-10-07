@@ -12,18 +12,33 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--dab", type=str,  help="path to a file to store dab values. Should have .npy extention", required=True
+    "--bin_out", type=str, default="",  help="path to a binary file to store dab values. Should have .npy extention"
 )
+
+parser.add_argument(
+    "--txt_out", type=str, default="", help="path to a text file to store dab values. Should have .txt extention"
+)
+
 
 args = parser.parse_args()
 MASTER_PATH = args.master
-DAB_PATH = args.dab
+BIN_PATH = args.bin_out
+TXT_PATH = args.txt_out
 
-if not DAB_PATH.endswith(".npy"):
-    raise Exception("Output dab file should have .npy extention, but the filename is\n %s"%DAB_PATH)
+if not (BIN_PATH or TXT_PATH):
+    raise Exception("At least of one of --bin_out, --txt_out arguments should be used")
+
+if not BIN_PATH.endswith(".npy"):
+    raise Exception("Output binary dab file should have .npy extention, but the filename is\n %s"%BIN_PATH)
+
+if not TXT_PATH.endswith(".txt"):
+    raise Exception("Output text dab file should have .txt extention, but the filename is\n %s"%TXT_PATH)
 
 lists = parse_master_yaml(MASTER_PATH)
   
 masks_dataset = MasksDataset(lists["image_lists"], lists["masks_lists"])
 dabs_values = calculate_dab_values(masks_dataset)
-np.save(DAB_PATH, dabs_values)
+if BIN_PATH:
+    np.save(BIN_PATH, dabs_values)
+if TXT_PATH:
+    np.savetxt(TXT_PATH, dabs_values)

@@ -207,12 +207,12 @@ def load_masks_areas(paths_list):
 
 
 
-def decorate_areas_distr(fig, ax, impath="", caption="", dpi=300):
+def decorate_areas_distr(fig, ax, xlabel="", ylabel="", impath="",  caption="", dpi=300):
     """
     Puts some stuff on the figure and saves it if the path is provided
     """    
-    ax.set_xlabel("Area, pixels")
-    ax.set_ylabel("Number of nuclei")
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
     ax.grid()
     if caption:
         ax.set_caption(caption)
