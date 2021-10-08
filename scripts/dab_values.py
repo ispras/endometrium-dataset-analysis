@@ -36,7 +36,7 @@ if not TXT_PATH.endswith(".txt"):
 
 lists = parse_master_yaml(MASTER_PATH)
   
-masks_dataset = MasksDataset(lists["image_lists"], lists["masks_lists"])
+masks_dataset = MasksDataset(lists["images_lists"], lists["masks_lists"])
 dabs_values = calculate_dab_values(masks_dataset)
 if BIN_PATH:
     np.save(BIN_PATH, dabs_values)

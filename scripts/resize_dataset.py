@@ -6,7 +6,6 @@ import albumentations as A
 
 class HWpair():
     def __init__(self, string):
-        print(string)
         numbers = tuple(int(x) for x in string.split(','))
         if len(numbers)!=2:
             raise argparse.ArgumentError()
@@ -28,9 +27,10 @@ parser.add_argument(
     "--size", type=HWpair, help="the desired output size (h,w). Should be a pair comma separated integers, e.g. --size 256,256.", required=True
 )
 
+args = parser.parse_args()
 MASTER_YML_PATH = args.master
 TARGET_SIZE = args.size.tuple_form()
 
 lists = parse_master_yaml(MASTER_YML_PATH)
-images_paths, keypoints_paths = agregate_images_and_labels_paths(lists["image_lists"], lists["labels_lists"])
+images_paths, keypoints_paths = agregate_images_and_labels_paths(lists["images_lists"], lists["labels_lists"])
 resize_dataset(images_paths, keypoints_paths, target_size=TARGET_SIZE)

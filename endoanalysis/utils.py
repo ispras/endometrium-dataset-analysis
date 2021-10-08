@@ -1,5 +1,6 @@
 import os
 import copy
+import yaml
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import  tqdm
@@ -87,9 +88,9 @@ def generate_masks_lists(lists, masks_dir, master_yml, new_master_dir=""):
     else:
         new_master_yml = os.path.join(os.path.dirname(master_yml), new_master_yml)
         
-    for list_i in range(len(lists["image_lists"])):
+    for list_i in range(len(lists["images_lists"])):
         masks_paths = []
-        images_list_path = lists["image_lists"][list_i]
+        images_list_path = lists["images_lists"][list_i]
         labels_list_path = lists["labels_lists"][list_i]
         if new_master_dir:
             masks_list_path = os.path.join(masks_lists_dir, "masks_%i.txt"%list_i)

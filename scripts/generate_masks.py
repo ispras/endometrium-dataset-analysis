@@ -104,7 +104,7 @@ lists = parse_master_yaml(MASTER_YAML)
 cmap = {0: "red", 1: "green", 2: "blue"}
 
 endo_dataset = PointsDataset(
-    lists["image_lists"],
+    lists["images_lists"],
     lists["labels_lists"],
     keypoints_dtype=float,
     cmap_kwargs={"cmap": cmap},
