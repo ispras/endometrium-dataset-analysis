@@ -1,10 +1,45 @@
+import os
 import itertools
 import copy
 import numpy as np
+import yaml
 from tqdm import tqdm
+import matplotlib.pyplot as plt
+import pandas as pd
+from matplotlib import cm
+import pingouin as pg
+import seaborn as sns
 from scipy.optimize import linear_sum_assignment
 from sklearn.metrics import cohen_kappa_score
+from endoanalysis.datasets import PointsDataset
 
+
+class MultiDict:
+    """
+    This class is cn be used as a regular dict
+    with a key as an unordered sequence of entities.
+    
+    Example
+    -------
+    >>> storage = MultiDict()
+    
+    >>> storage[1,2] = "a"
+    >>> storage[1,3] = "b"
+    >>> storage[2,1] = "c"
+    >>> print(storage)
+    {frozenset({1, 2}): 'c', frozenset({1, 3}): 'b'}
+    """
+    def __init__(self):
+        self.data = {}
+
+    def __setitem__(self, key, value):
+        self.data[frozenset(key)] = value
+
+    def __getitem__(self, key):
+        return self.data[frozenset(key)]
+    
+    def __repr__(self):
+        return self.data.__repr__()
 
 class SimilarityMeasure:
     """
@@ -79,8 +114,8 @@ def get_batch_relaibility_matrix(
     targets_from_batch1, 
     targets_from_batch2, 
     similarity,
-    indexes_to_consider,
-    missings_as_classes = False
+    indexes_to_consider="all",
+    drop_missed = False
 ):
     '''
     Composes relaibility matrix for two batches.
@@ -89,29 +124,39 @@ def get_batch_relaibility_matrix(
     ----------
     targets_from_batch1 : endoanalysis.targets.TargetsBatchArray like
         batch of targets corresponding to a set of images from the first rater in pair. 
-        Must have have the method targets_from_batch1.from_image(), 
+        Must have have the methods targets_from_batch1.from_image() and targets_from_batch1.num_images(),
         returning the container of targets corrsponding to a given image.
         The container must be compatible with similarity.
     targets_from_batch2 :  endoanalysis.targets.TargetsBatchArray  like
         the same as targets_from_batch1, but for the second rater.
     similarity : endoanalysis.agreement.SimilarityMeasure
         similarity measure, must be compatible with targets_from_batch1 and targets_from_batch2
-    indexes_to_consider : iterable
+    indexes_to_consider : iterable or str
         an iterable of image indexes which sould be taken into concideration. 
-        All indexes must be present in both  targets_from_batch1 an targets_from_batch2
-    missings_as_classes : bool
+        All indexes must be present in both  targets_from_batch1 an targets_from_batch2.
+        If indexes_to_consider == "all", all the present images will be processed
+    drop_missed : bool
         wheather to consider not matched targeds as separate class (with -1 label)
         
     Returns
     -------
     relaibility_matrix : ndarray
         relaibility matrix. The shape is (2, num_matched), where num_matched
-        is the number of targets which were sucsefully matched. This number
-        could not be gereater than the maximum total number of targets in
+        is the number of targets which were successfully matched. This number
+        could not be greater than the maximum total number of targets in
         batch1 or batch2
     '''
     
     rel_matrices = []
+    
+    if indexes_to_consider == "all":
+        len1 = targets_from_batch1.num_images()
+        len2 = targets_from_batch2.num_images()
+        if len1 != len2:
+            raise Exception("Different number of images in batches for agreement computation: %i, %i"%(len1, len2))
+        else:
+            indexes_to_consider = range(len1)
+        
     for image_i in indexes_to_consider:
         targets1 = targets_from_batch1.from_image(image_i)
         targets2 = targets_from_batch2.from_image(image_i)
@@ -123,7 +168,7 @@ def get_batch_relaibility_matrix(
         
         rel_matrices.append(np.vstack([targets1.classes()[row_ids], targets2.classes()[col_ids]]))
         
-        if missings_as_classes :
+        if not drop_missed:
             missings1 = np.setdiff1d(np.arange(len(targets1)), row_ids) 
             missings2 = np.setdiff1d(np.arange(len(targets2)), col_ids) 
 
@@ -139,9 +184,10 @@ def get_batch_relaibility_matrix(
 def compute_kappas(
     targets_containers,
     similarity,
-    raters_list,
-    indexes_to_consider,
-    missings_as_classes=False
+    experts_list,
+    indexes_to_consider="all",
+    drop_missed=False,
+    compute_all_kappas=False
 ):
     '''
     Compute Cohen's kappa for all raters from raters_list.  
@@ -153,341 +199,244 @@ def compute_kappas(
         Targets batches should be compatible with similarity
     similarity : endoanalysis.agreement.SimilarityMeasure
         similarity measure, must be compatible with targets_from_batch1 and targets_from_batch2
-    raters_list : iterable
-        an iterable of raters to consider. All listed raters must be in targets_containers keys
+    experts_list : iterable
+        an iterable of experts to consider. All listed experts must be in targets_containers keys
     indexes_to_consider : iterable
         an iterable of image indexes which sould be taken into concideration. 
-        All indexes must be present in all targets_containers
-    missings_as_classes : bool
+        All indexes must be present in all targets_containers.
+        If indexes_to_consider == "all", all the present images will be processed
+    drop_missed : bool
         wheather to consider not matched targeds as separate class (with -1 label)
-    
+    compute_all_kappas : bool
+        Usful for debug purposes. If True, kappas scores will be computed for all experts pairs, even if the pairs are differ by permutation or contains equal indexes. (So the pairs (1,2) and (2,1) will be computed separately, and the pairs (1,1) and (2,2) will also be computed). 
+        If False, only lower offdiagonal pairs are actually computed, while diagonal pairs are hardcoded to be equal to 1.
+        
     Returns
     -------
-    kappas : list of float
-        list of kappas for all raters pairs
-    '''
+    kappas : ndarray
+        the matrix of pairwise kappas. kappas[i,j] is a Cohen kappa for experts_list[i] and experts_list[j]. kappas[i,i] are always equals to 1,
+        
 
+    '''
     
-    kappas = []
-    for expert_1, expert_2 in itertools.combinations(raters_list, 2):
+    num_experts = len(experts_list)
+    kappas = np.zeros((num_experts, num_experts))
+    experts_to_ids = {y:x for x, y in enumerate(experts_list)}
+    
+    
+    if compute_all_kappas:
+        iterator = itertools.product(experts_list, 2)
+    else:
+        iterator = itertools.combinations(experts_list, 2)
+        
+    for expert_1, expert_2 in iterator:
         relaibility_matrix = get_batch_relaibility_matrix(
             targets_containers[expert_1],
             targets_containers[expert_2],
             similarity,
             indexes_to_consider,
-            missings_as_classes=missings_as_classes
+            drop_missed=drop_missed
         )
         kappa = cohen_kappa_score(relaibility_matrix[0], relaibility_matrix[1])
-        kappas.append(kappa)
+
+        kappas[
+            experts_to_ids[expert_1], 
+            experts_to_ids[expert_2]
+        ] = kappa
     
-    return kappas
+    if not compute_all_kappas:
+        kappas += kappas.transpose()
+        for i in range(num_experts):
+            kappas[i,i] = 1.
+            
+    return kappas, experts_to_ids
+
+def load_agreement_keypoints(agreement_yml_path):
+    """
+    Loads keypoints for agreement studies
+    
+    Parameters
+    -----------
+    agreement_yml_path : str
+        path to yml with lists for agreement study
+    
+    Returns
+    -------
+    keypoints : dict of endoanalysis.targets.KeypointsTruthBatchArray
+        loaded keypoints
         
+    Note
+    ----
+    The agreement yml should have the following structure:
     
-    
-# def compose_samples_as_pairs(objects_1, objects_2, similarity, sim_thresh):
-    
-#     '''
-#     Finds all pairs of objects(keypoints, bboxes, etc.) taken from two groups which are above the specified similarity threshold. 
-    
-#     Parameters
-#     ----------
-#     objects_1 : ndarray
-#         first group of the objects. Must be compatible with similiarty.
-#     objects_2 : ndarray
-#         second group of the objects. Must be compatible with similiarty.
-#     similarity : endoanalysis.agreement.SimilarityMeasure
-#         a measure of simelarity between two objects
-#     sim_thersh : float
-#         the threshold for similarity value defining whether two objects are
-#         corresponding to the one entity or not
-        
-#     Returns
-#     -------
-#     pairs : ndarray
-#         array with the indices of the pairs. The shape is (num_pairs, 3). 
-#         Each row corresponds to a pair and has the following values(signatures):
-#         (similiarty value, index in objects_1, index in objects_2).
-#         The unpaired objects are also put here and has the signature (-1, index, -1) for the objects from objects_1 and
-#         (-1, -1, index) for the objects from objects_2
-#         The order of pairs is the following: first come the paired objects, than the unpaired objects from objects_1
-#         and than the unpaired objects from objects_2
-        
-#     See also
-#     --------
-#     endoanalysis.agreement.SimilarityMeasure 
-        
-#     '''
-    
-#     sim_matrix = similarity.matrix(
-#             objects_1,
-#             objects_2
-#         )
-    
-#     num_rows, num_cols = sim_matrix.shape
-#     pairs = []
-#     unpaired_first = set(range(num_rows))
-#     unpaired_second = set(range(num_cols))
-    
-#     for row_i in range(num_rows):
-#         for col_j in range(num_cols):
-#             if sim_matrix[row_i, col_j] >= sim_thresh:
-#                 pairs.append((sim_matrix[row_i, col_j]*1000, row_i, col_j))
-#                 if row_i in unpaired_first:
-#                     unpaired_first.remove(row_i)
-#                 if col_j in unpaired_second:
-#                     unpaired_second.remove(col_j)
-          
-#     if len(pairs):
-#         pairs = np.array(pairs, dtype=int)
-#         pairs_sorted = pairs[np.argsort(pairs[:,0])][::-1]
-        
-#     else:
-#         pairs = np.empty((0,3))
-    
-#     unpaired_first = np.array(list(unpaired_first), dtype=int)
-#     unpaired_second = np.array(list(unpaired_second), dtype=int)
-#     unpaired_first = np.vstack([np.ones_like(unpaired_first) * (-1), unpaired_first,  np.ones_like(unpaired_first) * (-1)]).transpose()
-#     unpaired_second = np.vstack([np.ones_like(unpaired_second) * (-1), np.ones_like(unpaired_second) * (-1), unpaired_second ]).transpose()
-   
-#     pairs = np.vstack([pairs, unpaired_first, unpaired_second])
- 
-#     return pairs
-
-
-# def glue_samples(sample1, sample2):
-#     '''
-#     Checks whether two samples can be glued togeter and glues them if it is the case
-    
-#     Parameters
-#     ----------
-#     sample1: ndarray
-#         array with the indices of the first sample. The shape is (num_experts,).
-#         The -1 value corresponds to a no opinion
-#     sample2: ndarray
-#         array with the indices of the second sample. The shape is (num_experts,)
-        
-#     Returns
-#     -------
-#     is_compatible : bool
-#         the flag indicating that the samples can be glued together
-#     new_sample : list
-#         the reult of glueing procedure. If is_compatible is False,
-#         an empty list is returned
-        
-#     Note
-#     ----
-#     Two samples can be glued together if two conditions are satisfied:
-#     1) There are at least two experts who marked the sample with similar indices
-#     2) There are no experts who marked the sample with different indices
-    
-#     If the expert didn't marked the sample the index is -1), his field is ignored
-#     '''
-    
-#     new_sample = []
-    
-#     for index1, index2 in zip(sample1, sample2):
-#         if index1 == -1:
-#             index1 = index2
-#         if index2 == -1:
-#             index2 = index1
-#         if index1 != index2:
-#             return False, []
-#         new_sample.append(index1)
-        
-#     return True, new_sample
-
-# def merge_samples(samples_image):
-#     '''
-#     Merges the samples for a given image
-    
-#     Parameters
-#     ----------
-#     samples_image : ndaarray
-#         samples to merge. Should have the shape (num_pairs, num_experts). 
-#         Assumed to be sorted by similarities.
-        
-#     Returns
-#     -------
-#     samples_merged : ndarray
-#         merged samples. The shape is the same as samples_image.shape
-        
-#     '''
-#     samples_merged = copy.deepcopy(samples_image)
-#     num_experts = samples_merged.shape[1]
-  
-#     for i, sample in enumerate(samples_merged[1:], start=1):
-#         for j, base_sample in enumerate(samples_merged[0:i]):
-#             compat, new_sample = glue_samples(sample, base_sample)
-#             if compat:
-#                 samples_merged[j] = new_sample
-#                 samples_merged[i] = np.array([-1] * num_experts)
-
-#     return samples_merged     
-
-
-# def compose_relaibility_matrix(objects_image, objects_classes, experts_list, similarity, similarity_thresh):
-#     '''
-#     Composes relaibility matrix for the objects (keypoints, bboxes, etc.) for a given image.
-    
-#     Parameters
-#     ----------
-#     objects_image : dict of ndarray
-#         a dictionary with the arrays of objects. The keys are the experts names.
-#         ndarrays of objects must be compatible with similarity.
-#     objects_classes : dict of ndarray
-#         a dictionary with the arrays of objects classes. The keys are the experts names.
-#         ndarrays has the shape (num_keypoints,) and the entities are class labels
-#     experts_list : list of str
-#         a list of experts names to conseder. 
-#         If there is a key in objects_image which is not in experts_list, it will be ignored.
-#     similarity : endoanalysis.agreement.SimilarityMeasure
-#         a measure of simelarity between two objects.
-#     similarity_thresh : float
-#         the threshold for similarity value defining whether two objects are
-#         corresponding to the one entity or not.
-        
-#     Returns
-#     -------
-#     relaibility_matrix : ndarray
-#         an array with the shape (num_objects, num_experts).
-#         The element at (i,j) position encodes the class, which jth expert gave to ith entity.
-#         If the entity is not labeled by the expert, the -1 is assigned 
-        
-#     Note
-#     ----
-#     The algorithm has the following steps:
-    
-#     1) For each pair of expert compose the pairs with compose_samples_as_pairs
-#     2) Add additional columns filled with -1 to the resulting arrays to make their shape (num_pairs, num_experts)
-#     3) Sort the pairs according to similarity vvalues (first column)
-#     4) Cut off similarity values
-#     5) Merge the pairs with merge_samples
-#     6) Erase the samles which occasianlly got (-1, -1, ... -1) signatures after the merging
-#     7) Put the the objects claasses assigned by the experts instead of indices
-    
-#     See also
-#     --------
-#     endoanalysis.agreement.SimilarityMeasure
-#     endoanalysis.agreement.compose_samples_as_pairs
-#     endoanalysis.agreement.merge_samples
-#     '''
-
-#     samples_image = []
-
-#     for expert_i, expert_j in itertools.combinations(range(len(experts_list)), 2):
-
-
-#         samples_as_pairs  = compose_samples_as_pairs(
-#             objects_image[experts_list[expert_i]], 
-#             objects_image[experts_list[expert_j]], 
-#             similarity, 
-#             sim_thresh=similarity_thresh
-#         )
-        
-#         num_samples = len(samples_as_pairs)
-
-#         # inserting additional columns for the other experts
-#         samples_as_pairs = [samples_as_pairs[:,0]] +\
-#             [np.ones(num_samples) * (-1)] * expert_i +\
-#             [samples_as_pairs[:,1]] +\
-#             [np.ones(num_samples) * (-1)] * (expert_j - expert_i - 1 ) +\
-#             [[samples_as_pairs[:,2]]] +\
-#             [np.ones(num_samples) * (-1)] * (len(experts_list) - expert_j - 1)
-
-#         samples_as_pairs = np.vstack(samples_as_pairs).astype(int).transpose()
-#         samples_image.append(samples_as_pairs)
-
-#     samples_image = np.vstack(samples_image).astype(int)
-    
-
-    
-#     #sorting with the similarities, so the pairs with the largest similarity goes to the beginning
-#     samples_image = samples_image[np.argsort(samples_image[:,0])][::-1]
-    
-#     #cutting off similartity values
-#     samples_image = samples_image[:,1:]
-    
-#     #merging the samples
-#     samples_image = merge_samples(samples_image)
-    
-
+    expert1:
+      images_list: relative/path/to/images/list/for/exprert1/images.txt
+      labels_list: relative/path/to/images/list/for/exprert1/labels.txt
+    expert2:
+      images_list: relative/path/to/images/list/for/exprert2/images.txt
+      labels_list: relative/path/to/images/list/for/exprert2/labels.txt
       
-#     #erasing the samples with (-1, -1, ..., -1) signatures     
-#     samples_image = samples_image[np.where(np.prod(samples_image==-1, axis=1) == False)]     
-    
-#     #computing relaibility matrix based on classes
-#     relaibility_matrix = np.zeros_like(samples_image)
-#     for expert_i, expert in enumerate(experts_list):
-#         classes = objects_classes[expert]
-#         samples_ids = samples_image[:,expert_i]
-#         relaibility_matrix[:, expert_i] = np.vectorize(lambda x: classes[x] if x>=0 else x)(samples_ids)
+    and so on.
+      
+    """
+    with open(agreement_yml_path, "r") as file:
+        lists = yaml.safe_load(file)
         
-#     return relaibility_matrix
+    datasets = {}
+    keypoints = {}
+    datasets_lens = {}
+    for expert_name in lists.keys():
+
+        images_list = lists[expert_name]["images_list"]
+        labels_list = lists[expert_name]["labels_list"]
+        images_list = os.path.normpath(os.path.join(os.path.dirname(agreement_yml_path), images_list))
+        labels_list = os.path.normpath(os.path.join(os.path.dirname(agreement_yml_path), labels_list))
+
+        dataset = PointsDataset(
+            images_list,
+            labels_list,
+            keypoints_dtype = float
+        )
+        datasets_lens[expert_name] = len(dataset)
+        datasets[expert_name] = dataset
+
+        keypoints[expert_name] = dataset.collate()["keypoints"]
+        
+        datasets_lens_list = list(datasets_lens.values())
+        
+    if len(np.unique(datasets_lens_list)) != 1:
+        raise Exception("Some annotators have different numbe of images than the others")
+    else:
+        num_images = datasets_lens_list[0]
+        
+    return keypoints
 
 
-# def compose_batch_relaibility_matrix(
-#     objects_batches,
-#     experts_list, 
-#     similarity, 
-#     sim_thresh, 
-#     images_indexes, 
-#     missings_as_classes = True, 
-#     class_agnostic = False
-# ):
-#     '''
-#     Composes relaibility matrix for a batch of objects((keypoints, bboxes, etc.))
+def plot_agreement_matrix(kappas, experts, fig= None, ax=None):
     
-#     Parameters
-#     ----------
-#     objects_batches : dict of endoanalysis.keypoints.KeypointsArray
-#         a batch of keypoints. The keys are experts names
-#     experts_list : list of str
-#         a list of experts names to conseder. 
-#         If there is a key in objects_image which is not in experts_list, it will be ignored.
-#     similarity : endoanalysis.agreement.SimilarityMeasure
-#         a measure of simelarity between two objects.
-#     similarity_thresh : float
-#         the threshold for similarity value defining whether two objects are
-#         corresponding to the one entity or not.
-#     missings_as_classes : bool
-#         whether to treat the objects which are not found by some experts as separate classes
-#     class_agnostic : bool
-#         ignore the class labels (all classes are set to one). 
-#         Makes sense only if missings_as_classes is True
+    if (ax is None and fig is not None) or (ax is not None and fig is None):
+        raise Exception("Fig and ax paramterers must be None or not None simultaneously")
+        
+    kappas = np.copy(kappas)
+ 
+    mask = np.zeros_like(kappas)
+    mask[np.triu_indices_from(kappas,k=1)] = True
+    with sns.axes_style("white"):
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(7, 5))
+        sns.heatmap(
+            kappas, 
+            mask=mask,
+            vmin=0.,  
+            vmax=1,
+            annot=True, 
+            fmt="1.2f",
+            square=True,
+            cbar=False,
+            cmap="coolwarm",
+            ax=ax
+        )
+        ax.set_xticklabels(experts)
+        ax.set_yticklabels(experts)
+        ax.hlines([3], 0., 3., color="black", lw=3.)
+        ax.vlines([3], 3., 7., color="black", lw=3.)
+        plt.setp(ax.xaxis.get_majorticklabels(), rotation=45 )
+        plt.setp(ax.yaxis.get_majorticklabels(), rotation=45 )
     
-#     Returns
-#     -------
-#     relaibility_matrix : ndarray
-#         an array with the shape (num_objects, num_experts).
-#         The element at (i,j) position encodes the class, which jth expert gave to ith entity.
-#         If the entity is not labeled by the expert, the nan is assigned. If missings_as_classes is True,
-#         there are -1s except for nans
-    
-#     '''
-    
-    
-#     reliability_matrix = []
-#     print("Composing relaibility matrix")
-#     with tqdm(total = len(images_indexes)) as pbar:
-#         for image_i in images_indexes:
+    return fig, ax
 
-#             rel_matrix_image = compose_relaibility_matrix( 
-#                 {expert : objects_batches[expert].from_image(image_i) for expert in experts_list},
-#                 {expert : objects_batches[expert].from_image(image_i).classes() for expert in experts_list},
-#                 experts_list,
-#                 similarity,
-#                 similarity_thresh=sim_thresh
-#             )
-#             reliability_matrix.append(rel_matrix_image)
-#             pbar.update()
 
-#     reliability_matrix = np.vstack(reliability_matrix).transpose()
 
+def plot_agreement_matrices(kappas, studies, experts, fig_size=(16, 4)):
+    fig, axs = plt.subplots(1,len(studies), figsize=fig_size)
+    fig.tight_layout()
+    fig.subplots_adjust(wspace=-0.1)
+    for ax, study_name in zip(axs, studies):
+        plot_agreement_matrix(kappas[study_name], experts, fig=fig, ax=ax)
+        ax.set_title(study_name, y=-0.25)
+    fig.colorbar(cm.ScalarMappable(norm=None, cmap="coolwarm"), ax=ax)
+    return fig, ax
+
+def get_num_images(keypoints, experts):
+    num_images = keypoints[experts[0]].num_images()
+    for expert in experts[:1]:
+        num_images_check = keypoints[expert].num_images()
+        if num_images != num_images_check:
+            raise Exception("Num images for experts %s and %s are different"%(experts[0], expert))
+    return num_images
+
+def get_keypoints_nums(keypoints, experts_mapping):
+    experts = list(experts_mapping.keys())
     
-#     if class_agnostic:
-#         reliability_matrix[np.where(reliability_matrix!=-1)] = 1
+    num_images = get_num_images(keypoints, experts)
+            
+
+    keypoints_nums = np.zeros((len(experts), num_images))
     
-#     if not missings_as_classes:
-#         reliability_matrix = reliability_matrix.astype(float)
-#         reliability_matrix[np.where(reliability_matrix==-1)] = np.nan
-#     return reliability_matrix
+    for expert, expert_i in experts_mapping.items():
+        keypoints_num_expert = [len(keypoints[expert].from_image(image_i)) for image_i in range(num_images)]
+        keypoints_nums[expert_i] = np.array(keypoints_num_expert)
+        
+    return keypoints_nums
+
+def compute_icc(keypoints_nums,  experts):
+    num_images = keypoints_nums.shape[1]
+    df_dict = {
+        "rater": np.arange(len(experts)).repeat(num_images),
+        "image":  np.hstack([np.arange(num_images)]* len(experts)),
+        "nums": keypoints_nums.flatten(order="C")
+    }
+    df = pd.DataFrame(df_dict)
+    icc = pg.intraclass_corr(data=df, targets='image', raters='rater',ratings='nums').round(3)
+    return icc
+
+def plot_numbers(keypoints_nums, experts,experts_mapping, width=0.11, fig=None, ax=None):
+  
+    if (ax is None and fig is not None) or (ax is not None and fig is None):
+        raise Exception("Fig and ax paramterers must be None or not None simultaneously")
+    
+    num_images = keypoints_nums.shape[1]
+    x = np.arange(num_images)
+    if ax is None:
+        fig, ax = plt.subplots(1, figsize=(20,5))
+ 
+    num_experts = len(experts)
+    handles = []
+    for expert, expert_i in experts_mapping.items():
+        ax.set_xticks(np.arange(num_images))
+        handle = ax.bar(
+            x - (expert_i -  num_experts/2.)*width , 
+            keypoints_nums[expert_i], 
+            width=width , 
+            align='center', 
+            edgecolor='black', 
+            zorder=1,
+            label=expert
+        )
+        handles.append(handle)
+    ax.grid(b=True,axis="y", zorder=2)
+    ax.set_xlabel("Images")
+    ax.set_ylabel("Nuclei counts")
+    return fig, ax, handles
+    
+        
+def ptg_agreement(kappas, experts, experts_mapping):
+    kappas_to_mean = []
+    for expert_1, expert_2 in itertools.combinations(experts, 2):
+        if "ptg" in expert_1 and "ptg" in expert_2:
+            kappas_to_mean.append(kappas[experts_mapping[expert_1], experts_mapping[expert_2]])
+    return np.mean(kappas_to_mean)
+
+def stud_agreement(kappas, experts, experts_mapping):
+    kappas_to_mean = []
+    for expert_1, expert_2 in itertools.combinations(experts, 2):
+        if "stud" in expert_1 and "stud" in expert_2:
+            kappas_to_mean.append(kappas[experts_mapping[expert_1], experts_mapping[expert_2]])
+    return np.mean(kappas_to_mean)
+
+def ptg_stud_agreement(kappas, experts, experts_mapping):
+    kappas_to_mean = []
+    for expert_1, expert_2 in itertools.combinations(experts, 2):
+        if ("ptg" in expert_1 and "stud" in expert_2) or ("stud" in expert_1 and "ptg" in expert_2):
+            kappas_to_mean.append(kappas[experts_mapping[expert_1], experts_mapping[expert_2]])
+    return np.mean(kappas_to_mean)

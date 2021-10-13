@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import  tqdm
 
+
 from endoanalysis.datasets import extract_images_and_labels_paths
 from endoanalysis.nucprop import StainAnalyzer
 
@@ -164,9 +165,9 @@ def generate_masks(
         "masks": masks,
         "classes": classes
     }
-    
+
     if area_flags:
-        arrays_to_save['area_flags'] = (area_flags,)
+        arrays_to_save['area_flags'] = (area_flags_image,)
             
     with open(masks_path, "wb+") as file:
         if compress:
@@ -246,3 +247,6 @@ def calculate_dab_values(dataset):
             dab_values.append(dab_values_image)
             pbar.update()
     return np.concatenate(dab_values)
+
+
+

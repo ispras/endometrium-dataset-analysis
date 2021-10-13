@@ -491,7 +491,7 @@ class NucleiPropagator():
         return_tuple = (masks, borders)
 
         if return_area_flags:
-            return_tuple += (area_flags,)
+            return_tuple += (area_flags.reshape(-1),)
             
         return return_tuple
     

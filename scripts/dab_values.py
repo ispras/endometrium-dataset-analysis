@@ -25,13 +25,13 @@ MASTER_PATH = args.master
 BIN_PATH = args.bin_out
 TXT_PATH = args.txt_out
 
-if not (BIN_PATH or TXT_PATH):
+if not (BIN_PATH or TXT_PATH) and BIN_PATH:
     raise Exception("At least of one of --bin_out, --txt_out arguments should be used")
 
 if not BIN_PATH.endswith(".npy"):
     raise Exception("Output binary dab file should have .npy extention, but the filename is\n %s"%BIN_PATH)
 
-if not TXT_PATH.endswith(".txt"):
+if not TXT_PATH.endswith(".txt") and TXT_PATH:
     raise Exception("Output text dab file should have .txt extention, but the filename is\n %s"%TXT_PATH)
 
 lists = parse_master_yaml(MASTER_PATH)
