@@ -14,32 +14,6 @@ from sklearn.metrics import cohen_kappa_score
 from endoanalysis.datasets import PointsDataset
 
 
-class MultiDict:
-    """
-    This class is cn be used as a regular dict
-    with a key as an unordered sequence of entities.
-    
-    Example
-    -------
-    >>> storage = MultiDict()
-    
-    >>> storage[1,2] = "a"
-    >>> storage[1,3] = "b"
-    >>> storage[2,1] = "c"
-    >>> print(storage)
-    {frozenset({1, 2}): 'c', frozenset({1, 3}): 'b'}
-    """
-    def __init__(self):
-        self.data = {}
-
-    def __setitem__(self, key, value):
-        self.data[frozenset(key)] = value
-
-    def __getitem__(self, key):
-        return self.data[frozenset(key)]
-    
-    def __repr__(self):
-        return self.data.__repr__()
 
 class SimilarityMeasure:
     """
@@ -165,8 +139,10 @@ def get_batch_relaibility_matrix(
 
         row_ids, col_ids = linear_sum_assignment(sim_matrix, maximize=True)
         
-        
-        rel_matrices.append(np.vstack([targets1.classes()[row_ids], targets2.classes()[col_ids]]))
+        rel_matrix = np.vstack([targets1.classes()[row_ids], targets2.classes()[col_ids]])
+#         rel_matrix = np.ones_like(rel_matrix)
+        rel_matrices.append(rel_matrix)
+
         
         if not drop_missed:
             missings1 = np.setdiff1d(np.arange(len(targets1)), row_ids) 

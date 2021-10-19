@@ -665,7 +665,6 @@ class StainAnalyzer():
         for mask in masks:
             
             pixel_values = image_dab[mask]
-#             pixel_values[pixel_values<0] = 0.
             
             mean_value = pixel_values.mean()
             
