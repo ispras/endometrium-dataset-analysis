@@ -13,6 +13,10 @@ This is a supplementary repository for EndoNuke dataset. The dataset can be
  to use `python3.8` and `pip v21.1.1`. To run a dip test on
 staining distributions, it's also necessary to have `R` installed.
 
+It's also nessessary to correctly install cv2 dependencies. The following will be sufficient (for `Ubuntu 20.04`):
+```
+apt install libopencv-dev python3-opencv
+```
 For all subsequent actions we strongly recommend to use `venv` module to keep
 the system `python` unspoiled.
 
