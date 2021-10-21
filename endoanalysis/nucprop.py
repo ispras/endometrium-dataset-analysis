@@ -4,8 +4,8 @@ import cv2
 import matplotlib.pyplot as plt
 from skimage.segmentation import watershed
 from skimage.filters import threshold_multiotsu, threshold_yen, threshold_isodata, threshold_mean,  threshold_li, threshold_niblack, threshold_local
-from pointdet.models.LoG import LoGFilter
-from pointdet.utils.keypoints import KeypointsTruthArray
+
+from endoanalysis.keypoints import KeypointsTruthArray
 
 
 def check_bounds(coord, bounds):
@@ -335,55 +335,7 @@ class NucleiPropagator():
 
             self.log_filters.append(LoGFilter(**filter_cfg))
 
-    def _get_confidences(self, image, keypoints):
-        """
-        compute the confidences of all LoG filters for all keypoints.
 
-        Parameters
-        ----------
-        image : ndarray
-            input image
-        keypoits : KeypointsTruthArray
-            image keypoints
-
-        Returns
-        -------
-        confidences_all_filters : ndarray
-            confidences for of filters for all keypoints, the shape (num_filters, num_keypoints).
-        """
-
-        confidences_all_filters = np.zeros((len(self.log_filters), len(keypoints)))
-        for filter_i, log_filter in enumerate(self.log_filters):
-            confidences = log_filter.confidences(image, keypoints)
-            confidences_all_filters[filter_i] = confidences
-        return confidences_all_filters
-
-    def _choose_best_filters(self, image, keypoints):
-        """
-        Choose best filters for each keypoint.
-
-        Parameters
-        ----------
-        image : ndarray
-            input image.
-        keypoits : KeypointsTruthArray
-            image keypoints.
-
-        Returns
-        -------
-        best_filtes_inds : ndarray
-            1D array of filters with the highest confidences.
-        best_filters_confidences : ndarray
-            1D array of confidences of the chosen filters.
-        """
-        confidences = self._get_confidences(image, keypoints)
-        best_filtes_inds = confidences.argmax(axis=0)
-        best_filters_confidences = np.take_along_axis(
-            confidences, best_filtes_inds.reshape(1, -1), axis=0
-        )
-
-        return best_filtes_inds, best_filters_confidences
-    
     def generate_clipped_images(self, image, keypoints):
         """
         Generate images clipped around the keypoints
