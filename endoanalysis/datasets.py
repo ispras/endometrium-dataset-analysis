@@ -226,42 +226,7 @@ class MasksDataset:
         sample = self[x]
         image = sample[image_key]
         visualize_masks(sample["image"], sample["masks"])
-                
-# def resize_dataset_depr(dataset_main_file_path, target_size=(256,256)):
-    
-#     transorm = A.Compose([A.Resize(height=target_size[0], width=target_size[1])], keypoint_params=A.KeypointParams(format="xy"))
-#     dataset_dir = os.path.dirname(dataset_main_file_path)
-    
-#     with open(dataset_main_file_path, "r") as main_file:
-#         lines = main_file.readlines()
-#         for line in lines:
-#             image_path = os.path.join(dataset_dir, line.strip())
 
-#             image = image = cv2.imread(image_path)
-#             labels_path  = label_path_from_image_path(line)
-#             labels_path = os.path.join(dataset_dir, labels_path)
-       
-#             keypoints = load_keypoints(labels_path)
-
-#             if keypoints:
-#                 keypoints = np.array(keypoints)
-#                 coords = keypoints[:,0:2]
-#                 classes = keypoints[:,2]
-#             else: 
-#                 coords = []
-#             transformed = transorm(image = image, keypoints=coords)
-
-#             cv2.imwrite(image_path, transformed["image"])
-            
-#             labels_lines = [
-#                 " ".join([str(int(y)) for y in label] + [str(class_id)]) + " \n"
-#                 for label, class_id in zip(transformed["keypoints"], classes)
-#                 ]
-            
-#             os.remove(labels_path)
-
-#             with open(labels_path, "w+") as labels_file:
-#                 labels_file.writelines(labels_lines)
                 
 def resize_dataset(image_paths, labels_paths, target_size=(256,256)):
     

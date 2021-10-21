@@ -2,7 +2,7 @@ import os
 import argparse
 from endoanalysis.datasets import parse_master_yaml, agregate_images_and_labels_paths
 from endoanalysis.datasets import resize_dataset
-import albumentations as A
+
 
 class HWpair():
     def __init__(self, string):
