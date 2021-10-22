@@ -1,4 +1,4 @@
-# Description
+recommended# Description
 
 This is a supplementary repository for EndoNuke dataset. The dataset can be
  accessed at [endnuke.ispras.ru](endnuke.ispras.ru). The code here is the
@@ -36,7 +36,7 @@ pip list | grep endometrium
 The result must contain the line starting with `endometrium-dataset-analysis`
 
 # Methods from the paper
-Before folloing the instructions presented here it's hihgly teccomended to read the paper.
+Before following the instructions presented here it's highly reccomended to read the paper.
 To reproduce the analysis presented in the paper the following steps should be
  followed:
 <ol>
@@ -45,7 +45,8 @@ To reproduce the analysis presented in the paper the following steps should be
    Download the dataset from [endnuke.ispras.ru](endnuke.ispras.ru) and
     extract the archive. We assume, that the dataset is extracted in the directory
     `endometrium-dataset-analysis/data/dataset` and master yml files are extracted
-    to `endometrium-dataset-analysis/data/master_ymls` Then go to the directory with the scripts, ehicvwhich is `endometrium-dataset-analysis/scripts`.
+    to `endometrium-dataset-analysis/data/master_ymls` Then go to the project
+    root directory: `endometrium-dataset-analysis`.
 
   </li>
   <p></p>
