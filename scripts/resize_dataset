@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import os
 import argparse
 from endoanalysis.datasets import parse_master_yaml, agregate_images_and_labels_paths

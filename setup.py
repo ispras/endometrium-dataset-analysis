@@ -5,11 +5,11 @@ setup(
     version="0.1dev",
     packages=find_packages(include=["endoanalysis"]),
     scripts=[
-        "scripts/dab_values.py",
-        "scripts/detect_background.py",
-        "scripts/generate_masks.py",
-        "scripts/mean_radius.py",
-        "scripts/resize_dataset.py"
+        "scripts/dab_values",
+        "scripts/detect_background",
+        "scripts/generate_masks",
+        "scripts/mean_radius",
+        "scripts/resize_dataset"
     ],
     install_requires=[
         "tqdm==4.59.0",
