@@ -35,6 +35,19 @@ pip list | grep endometrium
 ```
 The result must contain the line starting with `endometrium-dataset-analysis`
 
+## R installation
+
+We use `R` implementation dip test for unimodality in the noteboog `staining.ipynb`
+To install `R`, follow th instrcutions from [here](https://www.r-project.org/).
+After `R` is installed, install the package diptest inside `R` environment:
+```R
+install.packages("diptest")
+```
+and than install `rpy2` via `pip` (don't forget to return to bash):
+```
+pip install rpy2
+```
+
 # Methods from the paper
 Before following the instructions presented here it's highly reccomended to read the paper.
 To reproduce the analysis presented in the paper the following steps should be
@@ -72,9 +85,6 @@ To reproduce the analysis presented in the paper the following steps should be
 
   Go through obtain the mean radius and area thresholds using the following `mean_raduis.ipynb` notebook:
 
-  ```
-  jupyter-notebook notebooks/mean_raduis.ipynb
-  ```
   or just use the values **23** for small outliers threshold, **658** for large threshold and **163** as average area.
   </li>
   <p></p>
@@ -109,10 +119,12 @@ To reproduce the analysis presented in the paper the following steps should be
   <p></p>
   <li>
 
-  Finally, go through `staining.ipynb` notebook to perform the dip tests and Kolmogorov-Smirnov test (note, that for this step `R` should be installed so `rpy2` package is operational):
+  Go through `staining.ipynb` notebook to perform the dip tests and Kolmogorov-Smirnov test (note, that for this step `R` should be installed so `rpy2` package is operational):
 
-  ```
-  jupyter-notebook notebooks/staining.ipynb
-  ```
   </li>
+  <li>
+
+  Finally, go through `agreement.ipynb` notebook to reproduce the agreement study
+  </li>
+  <p></p>
 </ol>
