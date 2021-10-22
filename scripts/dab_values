@@ -35,18 +35,17 @@ if not BIN_PATH.endswith(".npy"):
 
 if not TXT_PATH.endswith(".txt") and TXT_PATH:
     raise Exception("Output text dab file should have .txt extention, but the filename is\n %s"%TXT_PATH)
+    
+if not os.path.exists(os.path.dirname(BIN_PATH)):
+    os.makedirs(os.path.dirname(BIN_PATH), exist_ok=True)
+
+if not os.path.exists(os.path.dirname(BIN_PATH)):
+    os.makedirs(os.path.dirname(BIN_PATH), exist_ok=True)    
 
 lists = parse_master_yaml(MASTER_PATH)
   
 masks_dataset = MasksDataset(lists["images_lists"], lists["masks_lists"])
 dabs_values = calculate_dab_values(masks_dataset)
-
-
-if not os.path.exists(os.path.dirname(BIN_PATH)):
-    os.makedirs(os.path.dirname(BIN_PATH), exist_ok=True)
-
-if not os.path.exists(os.path.dirname(BIN_PATH)):
-    os.makedirs(os.path.dirname(BIN_PATH), exist_ok=True)
 
 if BIN_PATH:
     np.save(BIN_PATH, dabs_values)
