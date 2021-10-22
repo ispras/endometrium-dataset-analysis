@@ -54,7 +54,7 @@ To reproduce the analysis presented in the paper the following steps should be
   (note, that the resize is done in-place):
 
   ```
-  python resize_dataset.py --master ../data/master_ymls/everything.yaml --size 256,256
+  resize_dataset --master data/master_ymls/everything.yaml --size 256,256
   ```
   </li>
   <p></p>
@@ -62,7 +62,7 @@ To reproduce the analysis presented in the paper the following steps should be
   Run the script to generate the masks without any size filtering:
 
   ```
-  python generate_masks.py --master ../data/master_ymls/unique.yaml --workers 8 --window 100 --avg_area 20 --area_flags --new_master_dir ../data/masks/masks_raw --compress
+  generate_masks --master data/master_ymls/unique.yaml --workers 8 --window 100 --avg_area 20 --area_flags --new_master_dir data/masks/masks_raw --compress
   ```
    These masks will be saved to `endometrium-dataset-analysis/data/masks/masks_raw` dir.
   </li>
@@ -72,7 +72,7 @@ To reproduce the analysis presented in the paper the following steps should be
   Go through obtain the mean radius and area thresholds using the following `mean_raduis.ipynb` notebook:
 
   ```
-  jupyter-notebook ../notebooks/mean_raduis.ipynb
+  jupyter-notebook notebooks/mean_raduis.ipynb
   ```
   or just use the values **23** for small outliers threshold, **658** for large threshold and **163** as average area.
   </li>
@@ -81,7 +81,7 @@ To reproduce the analysis presented in the paper the following steps should be
   Run the script to generate filtered full masks (masks of fixed size):
 
   ```
-  python generate_masks.py --master ../data/master_ymls/unique.yaml --workers 8 --window 100 --avg_area 163 --min_area 23 --max_area 658 --area_flags --new_master_dir ../data/masks/masks_full --compress
+  generate_masks --master data/master_ymls/unique.yaml --workers 8 --window 100 --avg_area 163 --min_area 23 --max_area 658 --area_flags --new_master_dir data/masks/masks_full --compress
   ```
 
   These masks will be saved to `endometrium-dataset-analysis/data/masks/masks_full` dir.
@@ -91,7 +91,7 @@ To reproduce the analysis presented in the paper the following steps should be
   Run the script to generate "probes" masks (masks of fixed size):
 
   ```
-  python generate_masks.py --master ../data/master_ymls/unique.yaml --workers 8 --window 100 --avg_area 20 --min_area 1000000000 --area_flags --new_master_dir ../data/masks/masks_probes --compress
+  generate_masks --master data/master_ymls/unique.yaml --workers 8 --window 100 --avg_area 20 --min_area 1000000000 --area_flags --new_master_dir data/masks/masks_probes --compress
   ```
 
   These masks will be saved to `endometrium-dataset-analysis/data/masks/masks_probes` dir.
@@ -101,8 +101,8 @@ To reproduce the analysis presented in the paper the following steps should be
   Run the scripts to calculate dab values for probe and full mask methods:
 
   ```
-  python dab_values.py --master ../data/masks/masks_full/unique_with_masks.yml --bin_out ../data/dab_values/full.npy
-  python dab_values.py --master ../data/masks/masks_probes/unique_with_masks.yml --bin_out ../data/dab_values/probes.npy
+  dab_values --master data/masks/masks_full/unique_with_masks.yml --bin_out data/dab_values/full.npy
+  dab_values --master data/masks/masks_probes/unique_with_masks.yml --bin_out data/dab_values/probes.npy
   ```
   </li>
   <p></p>
@@ -111,7 +111,7 @@ To reproduce the analysis presented in the paper the following steps should be
   Finally, go through `staining.ipynb` notebook to perform the dip tests and Kolmogorov-Smirnov test (note, that for this step `R` should be installed so `rpy2` package is operational):
 
   ```
-  jupyter-notebook ../notebooks/staining.ipynb
+  jupyter-notebook notebooks/staining.ipynb
   ```
   </li>
 </ol>
