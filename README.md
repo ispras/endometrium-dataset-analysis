@@ -63,7 +63,7 @@ To reproduce the analysis presented in the paper the following steps should be
   Run the script to generate the masks without any size filtering:
 
   ```
-  generate_masks --master data/master_ymls/unique.yaml --workers 8 --window 100 --avg_area 20 --area_flags --new_master_dir data/masks/masks_raw --compress
+  generate_masks --master data/master_ymls/unique.yaml --workers 8 --window 100 --avg_area 20  --new_master_dir data/masks/masks_raw --compress
   ```
    These masks will be saved to `endometrium-dataset-analysis/data/masks/masks_raw` dir.
   </li>
@@ -82,7 +82,7 @@ To reproduce the analysis presented in the paper the following steps should be
   Run the script to generate filtered full masks (masks of fixed size):
 
   ```
-  generate_masks --master data/master_ymls/unique.yaml --workers 8 --window 100 --avg_area 163 --min_area 23 --max_area 658 --area_flags --new_master_dir data/masks/masks_full --compress
+  generate_masks --master data/master_ymls/unique.yaml --workers 8 --window 100 --avg_area 163 --min_area 23 --max_area 658  --new_master_dir data/masks/masks_full --compress
   ```
 
   These masks will be saved to `endometrium-dataset-analysis/data/masks/masks_full` dir.
@@ -92,7 +92,7 @@ To reproduce the analysis presented in the paper the following steps should be
   Run the script to generate "probes" masks (masks of fixed size):
 
   ```
-  generate_masks --master data/master_ymls/unique.yaml --workers 8 --window 100 --avg_area 20 --min_area 1000000000 --area_flags --new_master_dir data/masks/masks_probes --compress
+  generate_masks --master data/master_ymls/unique.yaml --workers 8 --window 100 --avg_area 20 --min_area 1000000000  --new_master_dir data/masks/masks_probes --compress
   ```
 
   These masks will be saved to `endometrium-dataset-analysis/data/masks/masks_probes` dir.
