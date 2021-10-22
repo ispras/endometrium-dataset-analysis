@@ -8,7 +8,6 @@ setup(
         "scripts/dab_values",
         "scripts/detect_background",
         "scripts/generate_masks",
-        "scripts/mean_radius",
         "scripts/resize_dataset"
     ],
     install_requires=[
