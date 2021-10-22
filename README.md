@@ -24,7 +24,7 @@ After all aforementioned packages are set up, run the following lines to
 install the package `endoanalysis`:
 
 ```
-git clone ...
+git clone git@github.com:ispras/endometrium-dataset-analysis.git
 cd endometrium-dataset-analysis
 pip install .
 ```
