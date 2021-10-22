@@ -1,4 +1,4 @@
-recommended# Description
+# Description
 
 This is a supplementary repository for EndoNuke dataset. The dataset can be
  accessed at [endnuke.ispras.ru](endnuke.ispras.ru). The code here is the
