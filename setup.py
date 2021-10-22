@@ -4,6 +4,13 @@ setup(
     name="endometrium-dataset-analysis",
     version="0.1dev",
     packages=find_packages(include=["endoanalysis"]),
+    scripts=[
+        "scripts/dab_values.py",
+        "scripts/detect_background.py",
+        "scripts/generate_masks.py",
+        "scripts/mean_radius.py",
+        "scripts/resize_dataset.py"
+    ],
     install_requires=[
         "tqdm==4.59.0",
         "numpy==1.20.2",
