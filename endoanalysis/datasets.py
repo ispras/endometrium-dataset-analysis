@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import patches, cm
 import albumentations as A
-from endoanalysis.targets import KeypointsTruthArray, KeypointsTruthBatchArray, keypoints_list_to_batch, load_keypoints
+from endoanalysis.targets import Keypoints, keypoints_list_to_batch, load_keypoints
 from endoanalysis.nucprop import visualize_masks
 
 
@@ -109,7 +109,7 @@ class PointsDataset:
             keypoints = np.empty((0,3))
 
         to_return = {
-            "keypoints": KeypointsTruthArray(keypoints.astype(self.keypoints_dtype))
+            "keypoints": Keypoints(keypoints.astype(self.keypoints_dtype))
         }
 
 

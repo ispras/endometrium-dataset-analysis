@@ -1,6 +1,6 @@
 import numpy as np
 
-class TargetsArray(np.ndarray):
+class ImageTargets(np.ndarray):
     """
     Subclass of ndarray designed to store the targets (objects on an image).
     This is the base class for  targets arrays of different types.
@@ -8,7 +8,7 @@ class TargetsArray(np.ndarray):
     Parameters
     ----------
     input_array : ndarray
-        the array to create TargetsArray from.
+        the array to create targets from.
         Must have float dtype and the shape (num_targets, param_num).
         If there is targets on the image, it should have the shape (0,).
 
@@ -32,7 +32,7 @@ class TargetsArray(np.ndarray):
     https://numpy.org/doc/stable/user/basics.subclassing.html
 
     but in the __init__ method. This is done to avoid unneccessary checks,
-    for exmaple when slicing the  TargetsArray.
+    for exmaple when slicing the  ImageTargets.
     """
 
     def __new__(cls, input_array):
@@ -61,7 +61,7 @@ class TargetsArray(np.ndarray):
 
     def _check_dtype(self):
         if self.dtype != float:
-            raise Exception("Targets entries should have dtype float")
+            raise Exception("ImageTargets entries should have dtype float")
 
     def conf_striped(self):
         """
@@ -99,7 +99,7 @@ class TargetsArray(np.ndarray):
 
     def specs(self):
         """
-        Returns the specifications of the Targets array.
+        Returns the specifications of the ImageTargets array.
 
         Returnshttps://numpy.org/doc/stable/user/basics.subclassing.html
         -------
@@ -111,7 +111,7 @@ class TargetsArray(np.ndarray):
 
         
    
-class TargetsBatchArray(TargetsArray):
+class ImageTargetsBatch(ImageTargets):
     """
     Base class for targets for images batch.
 
@@ -129,7 +129,7 @@ class TargetsBatchArray(TargetsArray):
 
     See also
     --------
-    pointdet.utils.targets.TargetsArray
+    pointdet.utils.targets.ImageTargets
         the base class with api specifications
     """
 
@@ -156,7 +156,7 @@ class TargetsBatchArray(TargetsArray):
 
         Returns
         -------
-        targets : TargetsArray
+        targets : ImageTargets
             image labels for all keypoints.
         """
 
@@ -178,15 +178,15 @@ class TargetsBatchArray(TargetsArray):
 
 
 
-class KeypointsArray(TargetsArray):
+class Keypoints(ImageTargets):
     """
-    Subclass of Targets designed to store the keypoints.
+    Subclass of ImageTargets designed to store the keypoints.
     This is the base class for keypoints arrays of different types.
 
     Parameters
     ----------
     input_array : ndarray
-        the array to create KeypointsArray from.
+        the array to create Keypoints from.
         Must have float dtype and the shape (num_keypoints, param_num).
         If there is no_keypoints, it should have the shape (0,).
 
@@ -212,10 +212,10 @@ class KeypointsArray(TargetsArray):
 
         Returns
         -------
-        confidences : ndarray of int
+        x_coords : ndarray of int
             1D array with x coordinates.
         """
-        raise NotImplementedError()
+        return self[:, 0].astype(int)
 
     def y_coords(self):
         """
@@ -223,52 +223,36 @@ class KeypointsArray(TargetsArray):
 
         Returns
         -------
-        confidences : ndarray of int
-            1D array with x coordinates.
+        x_coords : ndarray of int
+            1D array with y coordinates.
         """
-        raise NotImplementedError()
-
-
-
-
-class KeypointsTruthArray(KeypointsArray):
-    """
-    Keypoints array for storing the ground truth keypoints
-
-    Note
-    ----
-    Ground truth keypoints have no confidence data, so the shape should be (num_keypoints, 3) where 3 stands for  (x, y, class).
-    If the confidences() is called, the 1d ndarray of 1. with the len of num_keypoints will be returned.
-
-    See also
-    --------
-    pointdet.utils.keypoints.KeypointsArray
-        the base class with api specifications
-    """
-
-
-    def conf_striped(self):
-        return self
-
-    def confidences(self):
-        return np.ones(len(self))
-
-    def x_coords(self):
-        return self[:, 0].astype(int)
-
-    def y_coords(self):
         return self[:, 1].astype(int)
 
     def classes(self):
+        """
+        Returns keypoints classes 
+
+        Returns
+        -------
+        classes : ndarray of int
+            1D array with y coordinates.
+        """
         return self[:, 2].astype(int)
 
     def specs(self):
+        """
+        Returns spectifications of keypoints array
+        """
         return "(x, y, class)"
+
+
+
+
 
 
     
 
-class KeypointsBatchArray(TargetsBatchArray, KeypointsArray):
+class KeypointsBatch(ImageTargetsBatch, Keypoints):
     """
     Base class for keypoints for image batch.
 
@@ -286,10 +270,14 @@ class KeypointsBatchArray(TargetsBatchArray, KeypointsArray):
 
     See also
     --------
-    pointdet.utils.keypoints.KeypointsArray
+    pointdet.utils.keypoints.Keypoints
         the base class with api specifications
     """
 
+    def __init__(self, *args, **kwargs):
+        self.param_num = 4
+        self._check_shape()
+        self._check_dtype()
 
     def _prepare_array_from_image(self, image_i):
         """
@@ -326,34 +314,9 @@ class KeypointsBatchArray(TargetsBatchArray, KeypointsArray):
         '''
 
         return len(np.unique(self.image_labels()))
-    
 
-class KeypointsTruthBatchArray(KeypointsBatchArray):
-    """
-    Keypoints array for storing the predicted keypoints for image bach
-
-    Note
-    ----
-    The shape should be (num_keypoints, 4) where 5 stands for  (image_label, x, y, class)
-
-    See also
-    --------
-    pointdet.utils.keypoints.KeypointsArray
-        the base class with api specifications
-    pointdet.utils.keypoints.KeypointsBatchArray
-        the base class with api specifications
-    """
-
-    def __init__(self, *args, **kwargs):
-        self.param_num = 4
-        self._check_shape()
-        self._check_dtype()
-
-    def conf_striped(self):
-        return self[:, 0:3].astype(int)
-
-    def confidences(self):
-        return np.ones(len(self))
+    def from_image(self, image_i):
+        return Keypoints(self._prepare_array_from_image(image_i))
 
     def x_coords(self):
         return self[:, 1].astype(int)
@@ -367,8 +330,7 @@ class KeypointsTruthBatchArray(KeypointsBatchArray):
     def specs(self):
         return "(image_i, x, y, class)"
 
-    def from_image(self, image_i):
-        return KeypointsTruthArray(self._prepare_array_from_image(image_i))
+
 
 
 def load_keypoints(file_path):
@@ -409,12 +371,12 @@ def keypoints_list_to_batch(keypoints_list):
     
     Parameters
     ----------
-    keypoints_list : list of KeypointsTruthArray or KeypointsPredArray
+    keypoints_list : list of KeypointsTruth or KeypointsPred
         keypoints list to transform
     
     Returns
     -------
-    batch : KeypointsTruthBatchArray or KeypointsPredBatchArray
+    batch : KeypointsTruthBatch or KeypointsPredBatch
         transformed batch
     '''
     keypoints_return = []
@@ -422,10 +384,8 @@ def keypoints_list_to_batch(keypoints_list):
     
     current_type = type(keypoints_list[0])
 
-    if current_type == KeypointsTruthArray:
-        batch_type = KeypointsTruthBatchArray
-    elif current_type == KeypointsPredArray:
-        batch_type = KeypointsPredBatchArray
+    if current_type == Keypoints:
+        batch_type = KeypointsBatch
     else:
         raise Exception("Unsupported keypoints type %s"%current_type)
         

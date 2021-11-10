@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from skimage.segmentation import watershed
 from skimage.filters import threshold_multiotsu, threshold_yen, threshold_isodata, threshold_mean,  threshold_li, threshold_niblack, threshold_local
 
-from endoanalysis.keypoints import KeypointsTruthArray
+from endoanalysis.targets import Keypoints
 
 
 def check_bounds(coord, bounds):
@@ -42,7 +42,7 @@ def make_window(image, image_keypoints, center_keypoint_i, window_size):
     ----------
     image : ndarray
         the initial image
-    image_keypoints : KeypointsTruthArray
+    image_keypoints : Keypoints
         all keypoints corresponding to the image.
     center_keypoint_i : int
         index of the keypoint to make window around.
@@ -55,7 +55,7 @@ def make_window(image, image_keypoints, center_keypoint_i, window_size):
     image_clipped : ndarray
         fragment of the image around central point.
 
-    keypoints_clipped : KeypointsTruthArray
+    keypoints_clipped : Keypoints
         keypoints within  the clipped area. Central keypoint is always under the 0th index 
         
     borders : tuple of int
@@ -98,7 +98,7 @@ def make_window(image, image_keypoints, center_keypoint_i, window_size):
             ]
             keypoints_clipped.append(new_keypoint)
 
-    keypoints_clipped = KeypointsTruthArray(np.array(keypoints_clipped, dtype=float))
+    keypoints_clipped = Keypoints(np.array(keypoints_clipped, dtype=float))
     return image_clipped, keypoints_clipped, (bound_x_left, bound_x_right, bound_y_top, bound_y_bottom)
 
 
@@ -181,7 +181,7 @@ def watershed_mask(image, keypoints, num_otsu_classes=3):
     ----------
     image : ndarray
         image to generate the whatershed mask on.
-    keypoints : KeypointsTruthArray
+    keypoints : Keypoints
         keypoints marking the centers of the cavities.
 
     Returns
@@ -344,7 +344,7 @@ class NucleiPropagator():
         ----------
         image : ndarray
             input image. 
-        keypoints : KeypointsTruthArray
+        keypoints : Keypoints
             image keypoints.
             
         Returns
@@ -353,7 +353,7 @@ class NucleiPropagator():
                 list of 2D ndarrays of nuclei masks for the keypoints
             images_clipped : list of nd_array
                 list of 2D arrays with clipped images corresponding to each mask
-            keypoints_groups :list of KeypointsTruthArray
+            keypoints_groups :list of Keypoints
                 list keypoints for each clipped image. The zeroth keyoint is the base keypoint for the mask
             borders : list of tuple of int
                 list of tuples with 4 intergers, encoding the borders of the masks with respect to images
@@ -385,7 +385,7 @@ class NucleiPropagator():
         ----------
         image : ndarray
             input image.
-        keypoints : KeypointsTruthArray
+        keypoints : Keypoints
             image keypoints.
         return_area_flags : bool
             if True, the area flags will be returned
