@@ -27,7 +27,7 @@ class KeypointsArray(np.ndarray):
     classes()
         returns the keypoints class labels
     specs()
-        returns the strig describing keypoints format.
+        returns the string with keypoints format description.
 
     Note
     ----
@@ -128,7 +128,7 @@ class KeypointsArray(np.ndarray):
         """
         Returns the specifications of the keypoints array.
 
-        Returnshttps://numpy.org/doc/stable/user/basics.subclassing.html
+        Returns
         -------
 
         specs : str
