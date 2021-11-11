@@ -145,7 +145,7 @@ class PointsDataset:
             for center_x, center_y, obj_class in zip(x_coords, y_coords, classes):
                 
                 if "period" not in cmap_kwargs:
-                    color = cmap_kwargs["cmap"][obj_class]
+                    color = cmap_kwargs["cmap"](obj_class)
                 else:
                     color = cmap_kwargs["cmap"](obj_class % cmap_kwargs["period"])
                 
@@ -268,7 +268,7 @@ def parse_master_yaml(yaml_path):
     Parameters
     ----------
     yaml_path : str
-        pathe to master yaml from the script
+        path to master yaml from the script
     
     Returns
     -------
