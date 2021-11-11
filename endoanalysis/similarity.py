@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class SimilarityMeasure:
     """
     Base class for similarity measures
@@ -27,18 +28,22 @@ class Minkovsky2DSimilarity(SimilarityMeasure):
     def __init__(self, p=2, scale=1.0):
         self.p = p
         self.scale = scale
+        
 
     def measure(self, point1, point2):
-        diff = np.abs(point1 - point2)
-        power = np.power(diff, self.p)
-        distance = np.power(power.sum(), 1 / self.p) / self.scale
+        x_diff = point1.x_coords()[0] - point2.x_coords()[0]
+        y_diff = point1.y_coords()[0] - point2.y_coords()[0]
+        diffs = np.hstack([np.abs(x_diff), np.abs(y_diff)])
+        powers = np.power(diffs, self.p)
+        distance = np.power(powers.sum(), 1 / self.p) / self.scale
+
         return distance
 
     def matrix(self, points1, points2):
 
         coords1 = np.vstack([points1.x_coords(), points1.y_coords()])
         coords2 = np.vstack([points2.x_coords(), points2.y_coords()])
-     
+
         diffs = np.abs(coords1[:, :, np.newaxis] - coords2[:, np.newaxis, :])
 
         powers = np.power(diffs, self.p)
@@ -49,11 +54,12 @@ class Minkovsky2DSimilarity(SimilarityMeasure):
 
 class KPSimilarity(Minkovsky2DSimilarity):
     """
-    Object keypoints similarity
+    Keypoints similarity
     """
 
-    def __init__(self, p=2, scale=1.0):
+    def __init__(self, p=2, scale=1.0, class_agnostic=True):
         super().__init__(p, scale)
+        self.class_agnostic = class_agnostic
 
     def _exp_square(self, arr):
         return np.exp(-np.power(arr, 2) / 2.0)
@@ -63,5 +69,9 @@ class KPSimilarity(Minkovsky2DSimilarity):
         return self._exp_square(distance)
 
     def matrix(self, points1, points2):
-        distance_matrix = distance = super().matrix(points1, points2)
-        return self._exp_square(distance)
+        distance = super().matrix(points1, points2)
+        matrix = self._exp_square(distance)
+        if not self.class_agnostic:
+            class_matrix = points1.classes().reshape(-1, 1) == points2.classes().reshape(1,-1)
+            matrix = matrix * class_matrix
+        return matrix
