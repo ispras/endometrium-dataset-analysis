@@ -1,7 +1,7 @@
 # Description
 
 This is a supplementary repository for EndoNuke dataset. The dataset can be
- accessed at [endnuke.ispras.ru](endnuke.ispras.ru). The code here is the
+ accessed at [endnuke.ispras.ru](https://endonuke.ispras.ru). The code here is the
  implementation of the methods described in the corresponding paper and also
  provides some useful tools to use this dataset. It's up to a user to decide,
  whether to use them or to create the original methods.
