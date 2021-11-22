@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class ImageTargets(np.ndarray):
     """
     Subclass of ndarray designed to store the targets (objects on an image).
@@ -85,7 +86,6 @@ class ImageTargets(np.ndarray):
         """
         raise NotImplementedError()
 
- 
     def classes(self):
         """
         Returns the class labels of the targets.
@@ -101,16 +101,35 @@ class ImageTargets(np.ndarray):
         """
         Returns the specifications of the ImageTargets array.
 
-        Returnshttps://numpy.org/doc/stable/user/basics.subclassing.html
+        Returns
         -------
-
         specs : str
             targets array format specifications.
         """
         raise NotImplementedError()
 
+    def single(self, x):
+        """
+        Returns a single element from image targets.
         
-   
+        Parameters
+        ----------
+        x: int
+            id of element to return 
+            
+        Returns
+        -------
+        element: ImageTargets like
+            ImageTargets with a single element
+
+        Note
+        ----
+        The type of the single element will be the same,
+        as for the initial container.
+        """
+        return self[x].reshape(1, -1)
+
+
 class ImageTargetsBatch(ImageTargets):
     """
     Base class for targets for images batch.
@@ -144,7 +163,6 @@ class ImageTargetsBatch(ImageTargets):
         """
         raise NotImplementedError()
 
-
     def from_image(self, image_i):
         """
         Returns the targets from a specific image.
@@ -163,19 +181,17 @@ class ImageTargetsBatch(ImageTargets):
         raise NotImplementedError()
 
     def image_labels(self):
-        '''
+        """
         Returns image_labels
-        '''
+        """
         raise NotImplementedError()
-    
+
     def num_images(self):
-        '''
+        """
         Returns number of images in a batch
-        '''
+        """
 
-        raise NotImplementedError()   
-            
-
+        raise NotImplementedError()
 
 
 class Keypoints(ImageTargets):
@@ -205,7 +221,6 @@ class Keypoints(ImageTargets):
         self._check_shape()
         self._check_dtype()
 
-
     def x_coords(self):
         """
         Returns the x coordinates of the keypoints.
@@ -230,7 +245,7 @@ class Keypoints(ImageTargets):
 
     def classes(self):
         """
-        Returns keypoints classes 
+        Returns keypoints classes
 
         Returns
         -------
@@ -245,12 +260,6 @@ class Keypoints(ImageTargets):
         """
         return "(x, y, class)"
 
-
-
-
-
-
-    
 
 class KeypointsBatch(ImageTargetsBatch, Keypoints):
     """
@@ -294,24 +303,24 @@ class KeypointsBatch(ImageTargetsBatch, Keypoints):
             image labels for all keypoints.
         """
         if self.shape[0] == 0:
-            return self[:,1:]
+            return self[:, 1:]
         mask = self.image_labels() == image_i
 
         if mask.sum() == 0:
             return np.empty((0, self.shape[1] - 1))
-#             raise Exception("No image with label %i" % int(image_i))
+        #             raise Exception("No image with label %i" % int(image_i))
         return np.array(np.array(self[mask][:, 1:]))
 
     def image_labels(self):
-        '''
+        """
         Returns image_labels
-        '''
+        """
         return self[:, 0].astype(int)
-    
+
     def num_images(self):
-        '''
+        """
         Returns number of images in a batch
-        '''
+        """
 
         return len(np.unique(self.image_labels()))
 
@@ -329,8 +338,6 @@ class KeypointsBatch(ImageTargetsBatch, Keypoints):
 
     def specs(self):
         return "(image_i, x, y, class)"
-
-
 
 
 def load_keypoints(file_path):
@@ -365,35 +372,34 @@ def load_keypoints(file_path):
 
     return keypoints
 
+
 def keypoints_list_to_batch(keypoints_list):
-    '''
+    """
     Transforms list of keypoints to KeypointsBatch object
-    
+
     Parameters
     ----------
     keypoints_list : list of KeypointsTruth or KeypointsPred
         keypoints list to transform
-    
+
     Returns
     -------
     batch : KeypointsTruthBatch or KeypointsPredBatch
         transformed batch
-    '''
+    """
     keypoints_return = []
-    
-    
+
     current_type = type(keypoints_list[0])
 
     if current_type == Keypoints:
         batch_type = KeypointsBatch
     else:
-        raise Exception("Unsupported keypoints type %s"%current_type)
-        
+        raise Exception("Unsupported keypoints type %s" % current_type)
+
     for image_i, keypoints in enumerate(keypoints_list):
         if len(keypoints) != 0:
-            image_labels = (np.ones(keypoints.shape[0]) * image_i)[:,np.newaxis]
+            image_labels = (np.ones(keypoints.shape[0]) * image_i)[:, np.newaxis]
             keypoints = np.hstack([image_labels, keypoints])
             keypoints_return.append(keypoints)
 
     return batch_type(np.concatenate(keypoints_return, 0))
-    
