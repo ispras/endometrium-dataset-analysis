@@ -300,8 +300,6 @@ class NucleiPropagator():
 
     Parameters
     ----------
-    log_filters_cfgs : list of dicts
-        the parameters of log filters. If empy, no LoG filters will be used and all the watershed masks left as they are.
     min_area : int
         minimum area of the watershed mask (all watershed mask with lesser areas will be substituted with a predefined circular mask).
         Not used, if log_filters_cfgs is empty.
@@ -330,10 +328,6 @@ class NucleiPropagator():
         self.max_area = max_area
         self.average_area = average_area
         self.average_radius = np.sqrt(average_area / np.pi) 
-        self.log_filters = []
-        for filter_cfg in log_filters_cfgs:
-
-            self.log_filters.append(LoGFilter(**filter_cfg))
 
 
     def generate_clipped_images(self, image, keypoints):
@@ -533,11 +527,6 @@ class StainAnalyzer():
     Tha analyzer, which takes an image with predicted nuclei potions and estimates the
     DAB stain intensity for each nuclei
     
-    Parameters
-    ----------
-    propagator : pointdet.utils.nucprop.NucleiPropagator
-        the propagator, which generate the mask around nucleus keypoint
-        
     See also
     --------
     pointdet.utils.nucprop.NucleiPropagator
