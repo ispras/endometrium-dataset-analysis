@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from matplotlib import patches, cm
 import albumentations as A
 from endoanalysis.targets import Keypoints, keypoints_list_to_batch, load_keypoints
-from endoanalysis.nucprop import visualize_masks
+from endoanalysis.visualization import visualize_keypoints, visualize_masks
 
 
 def extract_images_and_labels_paths(images_list_file, labels_list_file):
@@ -85,7 +85,8 @@ class PointsDataset:
         images_list,
         labels_list,
         keypoints_dtype=np.float,
-        cmap_kwargs={"cmap": cm.Set1, "period": 8},
+        class_colors={x: cm.Set1(x) for x in range(10)},
+        channels_last = True
     ):
 
         self.keypoints_dtype = keypoints_dtype
@@ -94,7 +95,8 @@ class PointsDataset:
             images_list,
             labels_list,
         )
-        self.cmap_kwargs = cmap_kwargs
+        self.class_colors = class_colors
+        self.channels_last = channels_last
 
     def __len__(self):
         return len(self.images_paths)
@@ -102,6 +104,9 @@ class PointsDataset:
     def __getitem__(self, x):
 
         image = load_image(self.images_paths[x])
+        if not self.channels_last:
+            image = np.moveaxis(image, -1, 0)
+
         keypoints = load_keypoints(self.labels_paths[x])
 
         class_labels = [x[-1] for x in keypoints]
@@ -128,45 +133,33 @@ class PointsDataset:
         show_labels=True,
         image_key="image",
         print_labels=False,
-        labels_kwargs={"radius": 3, "alpha": 1.0},
+        labels_kwargs={"radius": 2.5, "alpha": 1.0,  "linewidth": 2, 'ec': (0,0,0)},
         cmap_kwargs=None,
     ):
 
-        if cmap_kwargs is None:
-            cmap_kwargs = self.cmap_kwargs
-
         sample = self[x]
-        image = sample[image_key]
-        keypoints = sample["keypoints"]
-        fig, ax = plt.subplots()
-
-        ax.imshow(image)
-        x_coords = keypoints.x_coords()
-        y_coords = keypoints.y_coords()
-        classes = keypoints.classes()
+     
+        image = sample["image"]
+        if not self.channels_last:
+            image = np.moveaxis(image, 0, -1)
 
         if show_labels:
-            for center_x, center_y, obj_class in zip(x_coords, y_coords, classes):
+            keypoints = sample["keypoints"]
+        else:
+            keypoints = Keypoints(np.empty(0,1))
 
-                if "period" not in cmap_kwargs:
-                    color = cmap_kwargs["cmap"](obj_class)
-                else:
-                    color = cmap_kwargs["cmap"](obj_class % cmap_kwargs["period"])
-
-                patch = patches.Circle(
-                    (center_x, center_y), color=color, **labels_kwargs
-                )
-
-                ax.add_patch(patch)
-        if print_labels:
-            for keypoint_i, keypoint in enumerate(keypoints_tuples):
-                print("%i. %i, %f, %f, %f, %f" % ((keypoint_i,) + keypoint))
-
+        _ = visualize_keypoints(
+            image,
+            keypoints,
+            class_colors = self.class_colors,
+            circles_kwargs = labels_kwargs
+        )
+        
     def collate(self, samples):
 
         images = [x["image"] for x in samples]
         keypoints_groups = [x["keypoints"] for x in samples]
-
+  
         return_dict = {
             "image": np.stack(images, 0),
             "keypoints": keypoints_list_to_batch(keypoints_groups),

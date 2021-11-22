@@ -20,7 +20,7 @@ def visualize_keypoints(
     Parameters
     ----------
     image: ndarray
-        input image. The shape must be (C, H, W)
+        input image. The shape must be (H, W, C)
     keypoints: endoanalysis.targets.keypoints
         keypoints to visualize
     class_colors:
@@ -56,12 +56,9 @@ def visualize_keypoints(
         fig, ax = plt.subplots(1, 1, figsize=(6, 6))
     else:
         fig = None
-        return_plt=False
-
-    image_show = np.moveaxis(image, 0, -1)    
-    ax.imshow(image_show)
+   
+    ax.imshow(image)
     ax.autoscale(False)
-
 
     x_coords = keypoints.x_coords()
     y_coords = keypoints.y_coords()
