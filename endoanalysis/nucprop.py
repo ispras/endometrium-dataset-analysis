@@ -3,7 +3,7 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 from skimage.segmentation import watershed
-from skimage.filters import threshold_multiotsu, threshold_yen, threshold_isodata, threshold_mean,  threshold_li, threshold_niblack, threshold_local
+from skimage.filters import threshold_multiotsu
 
 from endoanalysis.targets import Keypoints
 
@@ -14,15 +14,15 @@ def check_bounds(coord, bounds):
 
     Parameters
     ----------
-    coord : int or float
+    coord: int or float
         coord to check.
-    bounds : tuple of int or float
+    bounds: tuple of int or float
         boundaries within wich the coord should lay.
         bounds[1] should be greatere than bounds[0].
 
     Returns
     -------
-    result : bool
+    result: bool
         wheather the coord inside the boundaries.
     """
 
@@ -40,25 +40,25 @@ def make_window(image, image_keypoints, center_keypoint_i, window_size):
 
     Parameters
     ----------
-    image : ndarray
+    image: ndarray
         the initial image
-    image_keypoints : Keypoints
+    image_keypoints: Keypoints
         all keypoints corresponding to the image.
-    center_keypoint_i : int
+    center_keypoint_i: int
         index of the keypoint to make window around.
-    window_size : int
+    window_size: int
         Desired size of the window. Note, that if central point is close to the border,
         the window size will be reduced.
 
     Returns
     -------
-    image_clipped : ndarray
+    image_clipped: ndarray
         fragment of the image around central point.
 
-    keypoints_clipped : Keypoints
-        keypoints within  the clipped area. Central keypoint is always under the 0th index 
-        
-    borders : tuple of int
+    keypoints_clipped: Keypoints
+        keypoints within  the clipped area. Central keypoint is always under the 0th index
+
+    borders: tuple of int
         4 integers refering to a window borders: bound_x_left, bound_x_right, bound_y_top, bound_y_bottom
     """
     window_half_size = np.floor(window_size / 2).astype(int)
@@ -99,7 +99,11 @@ def make_window(image, image_keypoints, center_keypoint_i, window_size):
             keypoints_clipped.append(new_keypoint)
 
     keypoints_clipped = Keypoints(np.array(keypoints_clipped, dtype=float))
-    return image_clipped, keypoints_clipped, (bound_x_left, bound_x_right, bound_y_top, bound_y_bottom)
+    return (
+        image_clipped,
+        keypoints_clipped,
+        (bound_x_left, bound_x_right, bound_y_top, bound_y_bottom),
+    )
 
 
 def compute_image_grad(image):
@@ -108,13 +112,13 @@ def compute_image_grad(image):
 
     Parameters
     ----------
-    image : nd.array
+    image: nd.array
         image to take the gradient from. If it has multiple channales,
         the gradyscale version is taken before computeng the gradient.
 
     Returns
     -------
-    image_grad_abs : ndarray
+    image_grad_abs: ndarray
         image gradient (maxim values from x- and x-y gradients at a given point).
 
     """
@@ -139,20 +143,20 @@ def get_adjacent_points(image, x, y, size=1):
 
     Parameters
     ----------
-    image : ndarray
+    image: ndarray
         image containing the initial point. Needed mostly for the shap data.
-    x : int
+    x: int
         x coordinate of the target point.
-    y : int
+    y: int
         y coordinate of the target point.
-    size : int
+    size: int
         the disired size of the neighborhood.
 
     Returns
     -------
-    x_coors : ndarray
+    x_coors: ndarray
         x coordinates of the neighborhood points.
-    y_coors : ndarray
+    y_coors: ndarray
         y coordinates of the neighborhood points.
 
     Note
@@ -179,30 +183,33 @@ def watershed_mask(image, keypoints, num_otsu_classes=3):
 
     Parameters
     ----------
-    image : ndarray
+    image: ndarray
         image to generate the whatershed mask on.
     keypoints : Keypoints
         keypoints marking the centers of the cavities.
 
     Returns
     -------
-    mask : ndarray of int
+    mask: ndarray of int
         whatershed mask.
 
     """
     image_gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY).astype(np.uint8)
     markers = np.zeros_like(image_gray)
-    markers[image_gray > threshold_multiotsu(image_gray, classes=num_otsu_classes)[num_otsu_classes-2]] = 1
-
+    markers[
+        image_gray
+        > threshold_multiotsu(image_gray, classes=num_otsu_classes)[
+            num_otsu_classes - 2
+        ]
+    ] = 1
 
     x_coords = keypoints.x_coords()
     y_coords = keypoints.y_coords()
     for keypoint_i, (x_c, y_c) in enumerate(zip(x_coords, y_coords)):
         x_vic, y_vic = get_adjacent_points(image, x_c, y_c, size=1)
-       
+
         markers[y_vic, x_vic] = keypoint_i + 3
-    
-    
+
     image_grad = compute_image_grad(image)
     mask = watershed(image_grad, markers)
 
@@ -212,49 +219,71 @@ def watershed_mask(image, keypoints, num_otsu_classes=3):
 
     return mask
 
-def draw_circle(image, center_x, center_y, radius):
-    coords = np.indices(image.shape)
+
+def draw_circle(image_h, image_w, center_x, center_y, radius):
+    """
+    Creates a circle shaped mask.
+
+    Parameters
+    ----------
+    image_h: int
+        height of the image in pixels
+    image_w: int
+        width of the image in pixels
+    center_x: int
+        x_coordinate of circle center
+    center_y: int
+        y_coordinate of circle center
+    radius: int
+        radius of the circle
+
+    Returns
+    -------
+    mask: ndarray of bool
+        the resulting mask, the shape is (image_h, image_w)
+    """
+    coords = np.indices((image_h, image_w))
     coords_x = coords[1]
     coords_y = coords[0]
     mask = (coords_x - center_x) ** 2 + (coords_y - center_y) ** 2 < radius ** 2
     return mask
 
 
-def generate_contoured_masks( masks, alpha, color=(0,255,0), dilate = True):
+def generate_contoured_masks(masks, alpha, color=(0, 255, 0), dilate=True):
     """
     Generates the countours of the given masks. Usful for visualization.
 
     Parameters
     ----------
-    masks : ndarray
+    masks: ndarray
         masks to draw contours of. The shape sould be (num_masks, image_h, image_w)
-    alpha : float
+    alpha: float
         the transparance of the resulting contours
     color: tuple of int
         color of the masks in RGB representation
-    dilate : bool
+    dilate: bool
         whether to dilate the resulting contours
 
     Returns
     -------
-    contoured_masks : ndarray
+    contoured_masks: ndarray
         the array of masks countours
     """
 
-    masks_contours = np.stack([masks]*3 , axis=-1).astype(np.uint)
+    masks_contours = np.stack([masks] * 3, axis=-1).astype(np.uint)
     masks_contours = np.copy(masks).astype(np.uint8)
-
 
     for i, mask in enumerate(masks_contours):
         mask = mask.astype(np.uint8)
-        contours, _ = cv2.findContours(mask,cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
-        mask = cv2.drawContours(mask, contours, 0, (255,0,0), 1)
+        contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+        mask = cv2.drawContours(mask, contours, 0, (255, 0, 0), 1)
         if dilate:
-            mask = cv2.dilate(mask, np.array([[1,1],[1,1]]))
+            mask = cv2.dilate(mask, np.array([[1, 1], [1, 1]]))
         masks_contours[i] = mask
 
-
-    contoured_masks = np.stack([np.zeros_like(masks_contours)]*3 +[np.zeros_like(masks_contours)], axis=-1).astype(np.uint)
+    contoured_masks = np.stack(
+        [np.zeros_like(masks_contours)] * 3 + [np.zeros_like(masks_contours)], axis=-1
+    ).astype(np.uint)
 
     for color_i in range(3):
         contoured_masks[masks_contours > 1, color_i] = color[color_i]
@@ -262,34 +291,34 @@ def generate_contoured_masks( masks, alpha, color=(0,255,0), dilate = True):
     return contoured_masks
 
 
-def visualize_masks(image, masks=None, alpha=1., dilate=True):
+def visualize_masks(image, masks=None, alpha=1.0, dilate=True):
     """
-    Visualizes the masks for a given image. 
+    Visualizes the masks for a given image.
 
     Parameters
     ----------
-    image : ndarray
+    image: ndarray
         image to draw the masks on
-    keypoints : KeypointsArray like
+    keypoints: KeypointsArray like
         keypoints deifingi the muclei positions. If provided, masks should not be provided
-    masks : ndarray
-        masks to visualize. The shape must be (num_masks, image_h, image_w). 
+    masks: ndarray
+        masks to visualize. The shape must be (num_masks, image_h, image_w).
         If provided, keypoints must not be provided
-    alpha : float
+    alpha: float
         the transparency of the resulting contours
-    dilate : bool
+    dilate: bool
         whether to dilate the resulting contours
     """
 
-    contoured_masks = generate_contoured_masks(masks, alpha=alpha, dilate = dilate)
+    contoured_masks = generate_contoured_masks(masks, alpha=alpha, dilate=dilate)
 
-    plt.imshow(image) 
+    plt.imshow(image)
     for mask in contoured_masks:
         plt.imshow(mask)
     plt.show()
 
 
-class NucleiPropagator():
+class NucleiPropagator:
     """
     Propagator, which takes the nuclei keypoints and makes them into the nuclei masks.
 
@@ -300,18 +329,16 @@ class NucleiPropagator():
 
     Parameters
     ----------
-    min_area : int
+    min_area: int
         minimum area of the watershed mask (all watershed mask with lesser areas will be substituted with a predefined circular mask).
         Not used, if log_filters_cfgs is empty.
-    max_area : int
+    max_area: int
         maximum area of the watershed mask (all watershed mask with greater areas will be substituted with a predefined circular mask).
-    average_area : int
+    average_area: int
         area of circular mask, which substitutes watershed mask if it's aree is too big or to small.
         Not used, if log_filters_cfgs is empty.
-    window_size : int
+    window_size: int
         window size for watershed algoithm.
-
-
 
     See also
     --------
@@ -322,42 +349,47 @@ class NucleiPropagator():
         wrapper for the skiimage watershed algoritm.
     """
 
-    def __init__(self, log_filters_cfgs=[], min_area=6, max_area=400, average_area=160, window_size=30):
+    def __init__(
+        self,
+        min_area=6,
+        max_area=400,
+        average_area=160,
+        window_size=30,
+    ):
         self.window_size = window_size
         self.min_area = min_area
         self.max_area = max_area
         self.average_area = average_area
-        self.average_radius = np.sqrt(average_area / np.pi) 
-
+        self.average_radius = np.sqrt(average_area / np.pi)
 
     def generate_clipped_images(self, image, keypoints):
         """
         Generate images clipped around the keypoints
-        
+
         Parameters
         ----------
-        image : ndarray
-            input image. 
-        keypoints : Keypoints
+        image: ndarray
+            input image.
+        keypoints: Keypoints
             image keypoints.
-            
+
         Returns
         -------
-            masks : list of ndarray
+            masks: list of ndarray
                 list of 2D ndarrays of nuclei masks for the keypoints
-            images_clipped : list of nd_array
+            images_clipped: list of nd_array
                 list of 2D arrays with clipped images corresponding to each mask
-            keypoints_groups :list of Keypoints
+            keypoints_groups: list of Keypoints
                 list keypoints for each clipped image. The zeroth keyoint is the base keypoint for the mask
-            borders : list of tuple of int
+            borders: list of tuple of int
                 list of tuples with 4 intergers, encoding the borders of the masks with respect to images
-                The order is: bound_x_left, bound_x_right, bound_y_top, bound_y_bottom 
+                The order is: bound_x_left, bound_x_right, bound_y_top, bound_y_bottom
         """
-        
+
         images_clipped = []
         keypoints_groups = []
         borders = []
-        
+
         if len(keypoints):
             for keypoint_i in range(len(keypoints)):
 
@@ -367,10 +399,9 @@ class NucleiPropagator():
                 images_clipped.append(image_clipped)
                 keypoints_groups.append(keypoints_clipped)
                 borders.append(borders_clipped)
-            
+
         return images_clipped, keypoints_groups, borders
 
-    
     def generate_masks(self, image, keypoints, return_area_flags=False):
         """
         Generate masks for image keypoints.
@@ -389,83 +420,86 @@ class NucleiPropagator():
 
         Returns
         -------
-        masks : list of ndarray
+        masks: list of ndarray
             list of 2D ndarrays of nuclei masks for the keypoints
-        borders : list of tuple of int
+        borders: list of tuple of int
             list of tuples with 4 intergers, encoding the borders of the masks with respect to images.
             The order is: bound_x_left, bound_x_right, bound_y_top, bound_y_bottom.
-        area_flags : ndarray , optional
+        area_flags: ndarray , optional
             area_flags. Will be return only if return_area_flags is True
         """
-        
+
         masks = []
         borders = []
         images_clipped = []
-        
+
         if return_area_flags:
             area_flags = np.zeros(len(keypoints))
-            
+
         if len(keypoints):
-            
-            
-            images_clipped, keypoints_groups, borders = self.generate_clipped_images(image, keypoints)
-            
-            for keypoint_i, (image_clipped, keypoints_clipped, mask_borders) in enumerate(zip(images_clipped, keypoints_groups, borders)):
-            
+
+            images_clipped, keypoints_groups, borders = self.generate_clipped_images(
+                image, keypoints
+            )
+
+            for keypoint_i, (
+                image_clipped,
+                keypoints_clipped,
+                mask_borders,
+            ) in enumerate(zip(images_clipped, keypoints_groups, borders)):
+
                 bound_x_left, bound_x_right, bound_y_top, bound_y_bottom = mask_borders
                 mask = watershed_mask(image_clipped, keypoints_clipped)
-                
 
                 mask_area = np.sum(mask)
                 if mask_area < self.min_area or mask_area > self.max_area:
                     x = keypoints_clipped.x_coords()[0]
                     y = keypoints_clipped.y_coords()[0]
-                    mask = draw_circle(mask, x, y, self.average_radius)
-                    
+                    mask_h, mask_w = mask.shape
+                    mask = draw_circle(mask_h, mask_w, x, y, self.average_radius)
+
                     if return_area_flags:
                         if mask_area < self.min_area:
-  
+
                             area_flags[keypoint_i] = 1
                         elif mask_area > self.max_area:
-             
+
                             area_flags[keypoint_i] = 2
-                    
+
                 masks.append(mask)
                 images_clipped.append(image_clipped)
-            
-            
+
         return_tuple = (masks, borders)
 
         if return_area_flags:
             return_tuple += (area_flags.reshape(-1),)
-            
+
         return return_tuple
-    
-  
+
     def masks_to_image_size(self, image, masks, borders):
         """
         Pads the masks to make them maching the image. The masks are usually come from
         generate_masks method.
-        
+
         Parameters
         ----------
-        image : ndarray
+        image: ndarray
             input image.
-        masks : list of ndarray
+        masks: list of ndarray
             masks to pad
-        borders : list of tuple of int
+        borders: list of tuple of int
             list of tuples with 4 intergers, encoding the borders of the masks with respect to images
-            The order is: bound_x_left, bound_x_right, bound_y_top, bound_y_bottom  
-            
+            The order is: bound_x_left, bound_x_right, bound_y_top, bound_y_bottom
+
         Returns
         -------
         masks_image_sized : ndarray
-            3D ndarray of shape (num_masks, image_h, image_w) with the padded masks 
+            3D ndarray of shape (num_masks, image_h, image_w) with the padded masks
         """
         if len(masks):
-            masks_image_sized = np.zeros((len(masks), image.shape[0], image.shape[1])).astype(
-                bool
-            )
+            masks_image_sized = np.zeros(
+                (len(masks), image.shape[0], image.shape[1])
+            ).astype(bool)
             for mask_i, (mask, mask_borders) in enumerate(zip(masks, borders)):
                 bound_x_left, bound_x_right, bound_y_top, bound_y_bottom = mask_borders
                 mask_ys, mask_xs = np.where(mask)
@@ -482,140 +516,162 @@ class NucleiPropagator():
 
                 masks_image_sized[mask_i, mask_ys, mask_xs] = True
         else:
-            masks_image_sized = np.zeros((1, image.shape[0], image.shape[1])).astype(bool)
-            
-            
+            masks_image_sized = np.zeros((1, image.shape[0], image.shape[1])).astype(
+                bool
+            )
+
         return masks_image_sized
-                
-            
-    
-    
-    def visualize_masks(self, image, keypoints=None, masks=None, alpha=1., dilate=True):
+
+    def visualize_masks(
+        self, image, keypoints=None, masks=None, alpha=1.0, dilate=True
+    ):
         """
         Visualizes the masks for a given image. Can generate them from the keypoints,
         or use the pregenerated masks.
-        
+
         Parameters
         ----------
-        image : ndarray
+        image: ndarray
             image to draw the masks on
         keypoints : KeypointsArray like
             keypoints deifingi the muclei positions. If provided, masks should not be provided
-        masks : ndarray
-            masks to visualise. The shape must be (num_masks, image_h, image_w). 
+        masks: ndarray
+            masks to visualise. The shape must be (num_masks, image_h, image_w).
             If provided, keypoints must not be provided
-        alpha : float
+        alpha: float
             the transparance of the resulting contours
-        dilate : bool
+        dilate: bool
             whether to dilate the resulting contours
         """
-        
+
         if keypoints is None and masks is None:
             raise Exception("Either keypoints or masks should be provided")
         if keypoints is not None and masks is not None:
             raise Exception("Keypoints and masks cannot provided  simultaneously")
-        
+
         if masks is None:
             masks, borders = self.generate_masks(image, keypoints)
             masks = self.masks_to_image_size(image, masks, borders)
-        
+
         visualize_masks(image, masks=masks, alpha=alpha, dilate=dilate)
-    
-    
-class StainAnalyzer():
+
+
+class StainAnalyzer:
     """
     Tha analyzer, which takes an image with predicted nuclei potions and estimates the
     DAB stain intensity for each nuclei
-    
+
     See also
     --------
     pointdet.utils.nucprop.NucleiPropagator
-        
     """
+
     def __init__(self):
-        
-        
-        stain_matrix = np.matrix([
-            [0.65, 0.70, 0.29],
-            [0.07, 0.99, 0.11],
-            [0.27, 0.59, 0.78]
-        ])
-        
+
+        stain_matrix = np.matrix(
+            [[0.65, 0.70, 0.29], [0.07, 0.99, 0.11], [0.27, 0.59, 0.78]]
+        )
+
         self.deconv_matrix = np.linalg.inv(stain_matrix)
-        
+
         max_matrix = np.copy(self.deconv_matrix)
         max_matrix[self.deconv_matrix < 0] *= 0
-        max_matrix[self.deconv_matrix > 0] *= -np.log(0.1/255.)
+        max_matrix[self.deconv_matrix > 0] *= -np.log(0.1 / 255.0)
         max_matrix.sum(axis=1)
 
-        self.dab_max = 1.
-        self.dab_min = 0.
-        
+        self.dab_max = 1.0
+        self.dab_min = 0.0
+
     def get_stained_image(self, image):
         """
         Applies color deconvolution to the image to extract eozin, hemotoxilin and DAB stains
-        
+
         Parameters
         ----------
-        image : ndarray
+        image: ndarray
             input image. The shape must be (height, width, channels)
-        
+
         Returns
         -------
-        image_stains : ndarray
-            the deconvolved iage, the shape is the same as image
-            
+        image_stains: ndarray
+            the deconvolved image, the shape is the same as image
         """
         image = np.copy(image)
-        image[image<=1.] = 1.
-        od_image = -np.log(image / 255.)
-        image_stains = np.tensordot(od_image, self.deconv_matrix, axes=((2,),(1,)))
-        
+        image[image <= 1.0] = 1.0
+        od_image = -np.log(image / 255.0)
+        image_stains = np.tensordot(od_image, self.deconv_matrix, axes=((2,), (1,)))
+
         return image_stains
-    
+
     def calulate_dab_values(self, image, masks):
         """
         Calculates DAB values for each keypoint on the image.
-        
+
         To calculate DAB vaules the  following steps are made:
-        
-        1) Around each keypoint a nuclei mask is drawn usngg self.propagator        
-        2) Nuclei mask is applied to the third channel of DAB image        
+
+        1) Around each keypoint a nuclei mask is drawn usngg self.propagator
+        2) Nuclei mask is applied to the third channel of DAB image
         3) The mean pixel value inside the mask is calculated
-        
-        
+
+
         Parameters
         ----------
-        image : ndarray
+        image: ndarray
             input image. The shape must be (height, width, channels)
-            
-        keypoints : KeypointsArray like
-            image keypoints
-            
+
+        masks: ndarray
+            nuclei masks. The shape should be (num_masks, h, w)
+
         Returns
         -------
-        dab_values : ndarray
+        dab_values: ndarray
             the dab values for the keypoints
         """
-        
+
         image_stains = self.get_stained_image(image)
-        image_dab = image_stains[:,:,2:]
-        
+        image_dab = image_stains[:, :, 2:]
 
         dab_values = []
         for mask in masks:
-            
+
             pixel_values = image_dab[mask]
-            
             mean_value = pixel_values.mean()
-            
             dab_values.append(mean_value)
 
         dab_values = np.array(dab_values)
         dab_values -= self.dab_min
-        dab_values /= (self.dab_max - self.dab_min)
-        
-        return dab_values 
-    
-    
-    
+        dab_values /= self.dab_max - self.dab_min
+
+        return dab_values
+
+
+    def dab_values_probes(self, image, keypoints, radius):
+        """
+        Calculates DAB values for the keypoints using probes method:
+        for each keypoint a circle of a given radius is taken as a mask.
+
+        Parameters
+        ----------
+        image: ndarray
+            input image, the shape is (H, W, C)
+        keypoints: endoanalysis.targets.Keypoints
+            keypoints to calculate dab values for
+        radius: float
+            probe radius
+
+        Returns
+        -------
+        dab_values: ndarray
+            dab values for the keypoints
+        """
+        image_h, image_w, _ = image.shape
+        image_stains = self.get_stained_image(image)
+        image_dab = image_stains[:, :, 2:]
+        dab_values = np.zeros(len(keypoints))
+
+        for kp_i, (x, y) in enumerate(zip(keypoints.x_coords(), keypoints.y_coords())):
+            mask = draw_circle(image_h, image_w, x, y, radius)
+            pixel_values = image_dab[mask]
+            dab_values[kp_i]= pixel_values.mean()
+
+        return dab_values

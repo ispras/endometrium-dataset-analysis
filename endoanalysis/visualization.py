@@ -2,17 +2,17 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 from matplotlib import patches
-
+from matplotlib import cm
 
 
 def visualize_keypoints(
     image, 
     keypoints, 
-    class_colors, 
+    class_colors = {x: cm.Set1(x) for x in range(10)}, 
     labels=None, 
     fig=None,
     ax=None, 
-    circles_kwargs={"radius": 3, "alpha": 1.0}
+    circles_kwargs={"radius": 3, "alpha": 1.0, "ec":(0,0,0)}
     ):
     """
     Visualise keypoints on the image
