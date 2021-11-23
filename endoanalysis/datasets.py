@@ -224,12 +224,16 @@ def resize_dataset(image_paths, labels_paths, target_size=(256, 256)):
         for image_path, labels_path in zip(image_paths, labels_paths):
 
             image = image = cv2.imread(image_path)
+            image_h, image_w, _ = image.shape
 
             keypoints = load_keypoints(labels_path)
 
             if keypoints:
                 keypoints = np.array(keypoints)
+                keypoints[:, 0][keypoints[:, 0] == image_w] = image_w - 1
+                keypoints[:, 1][keypoints[:, 1] == image_h] = image_h - 1
                 coords = keypoints[:, 0:2]
+                
                 classes = keypoints[:, 2]
             else:
                 coords = []
