@@ -85,14 +85,14 @@ To reproduce the analysis presented in the paper the following steps should be
 
   Go through obtain the mean radius and area thresholds using the following `mean_raduis.ipynb` notebook:
 
-  or just use the values **23** for small outliers threshold, **658** for large threshold and **163** as average area.
+  or just use the values **18** for small outliers threshold, **667** for large threshold and **163** as average area.
   </li>
   <p></p>
   <li>
   Run the script to generate filtered full masks (masks of fixed size):
 
   ```
-  generate_masks --master data/master_ymls/unique.yaml --workers 8 --window 100 --avg_area 163 --min_area 23 --max_area 658  --new_master_dir data/masks/masks_full --compress
+  generate_masks --master data/master_ymls/unique.yaml --workers 8 --window 100 --avg_area 163 --min_area 18 --max_area 667  --new_master_dir data/masks/masks_full --compress
   ```
 
   These masks will be saved to `endometrium-dataset-analysis/data/masks/masks_full` dir.
