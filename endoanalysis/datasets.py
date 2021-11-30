@@ -279,3 +279,6 @@ def parse_master_yaml(yaml_path):
         lists[list_type] = new_paths_list
 
     return lists
+
+
+    
