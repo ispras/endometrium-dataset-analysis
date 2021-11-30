@@ -18,7 +18,6 @@ setup(
         "scipy==1.7.1",
         "scikit-learn==0.24.1",
         "opencv-python==4.5.1.48",
-        "albumentations==0.5.2",
         "pandas==1.2.4",
         "pingouin==0.4.0"
     ]

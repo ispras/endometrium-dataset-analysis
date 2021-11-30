@@ -5,7 +5,6 @@ from tqdm import tqdm
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import patches, cm
-import albumentations as A
 from endoanalysis.targets import Keypoints, keypoints_list_to_batch, load_keypoints
 from endoanalysis.visualization import visualize_keypoints, visualize_masks
 
