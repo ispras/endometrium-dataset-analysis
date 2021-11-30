@@ -365,7 +365,7 @@ def load_keypoints(file_path):
     with open(file_path, "r") as labels_file:
         for line in labels_file:
             line_contents = line.strip().split(" ")
-            line_floated = tuple(int(x) for x in line_contents)
+            line_floated = tuple(int(float(x)) for x in line_contents)
             x_center, y_center, obj_class = tuple(line_floated)
             keypoint = x_center, y_center, obj_class
             keypoints.append(keypoint)
