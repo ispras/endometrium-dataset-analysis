@@ -26,7 +26,7 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--size", type=HWpair, help="the desired output size (h,w). Should be a pair comma separated integers, e.g. --size 256,256.", required=True
+    "--size", type=HWpair, help="the desired output size (w,h). Should be a pair comma separated integers, e.g. --size 256,256.", required=True
 )
 
 args = parser.parse_args()
