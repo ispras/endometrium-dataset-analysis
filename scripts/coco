@@ -1,0 +1,38 @@
+#!/usr/bin/env python
+
+import os
+import shutil
+import argparse
+from endoanalysis.datasets import parse_master_yaml, agregate_images_and_labels_paths
+from endoanalysis.datasets import resize_dataset
+from endoanalysis.coco_transfer import make_coco
+
+
+parser = argparse.ArgumentParser(description="")
+
+parser.add_argument(
+    "--input_file", type=str,  help="", required=True
+)
+
+parser.add_argument(
+    "--output_dir", type=str, help="", required=True
+)
+
+parser.add_argument(
+    "--overwrite", type=bool, help="", required=True
+)
+
+args = parser.parse_args()
+input_file = args.input_file
+output_dir = args.output_dir
+overwrite = args.overwrite
+
+if os.path.isdir(output_dir):
+    if overwrite:
+        shutil.rmtree(output_dir)
+    else:
+        raise('Pls check output directory and ovewrite flag')
+
+os.makedirs(output_dir)
+make_coco(input_file, output_dir=output_dir, return_ano=False)
+
