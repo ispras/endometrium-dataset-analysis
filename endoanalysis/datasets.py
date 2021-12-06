@@ -85,7 +85,7 @@ class PointsDataset:
         labels_list,
         keypoints_dtype=np.float,
         class_colors={x: cm.Set1(x) for x in range(10)},
-        channels_last=True,
+
     ):
 
         self.keypoints_dtype = keypoints_dtype
@@ -95,7 +95,7 @@ class PointsDataset:
             labels_list,
         )
         self.class_colors = class_colors
-        self.channels_last = channels_last
+
 
     def __len__(self):
         return len(self.images_paths)
@@ -103,8 +103,6 @@ class PointsDataset:
     def __getitem__(self, x):
 
         image = load_image(self.images_paths[x])
-        if not self.channels_last:
-            image = np.moveaxis(image, -1, 0)
 
         keypoints = load_keypoints(self.labels_paths[x])
 
@@ -136,8 +134,7 @@ class PointsDataset:
         sample = self[x]
 
         image = sample["image"]
-        if not self.channels_last:
-            image = np.moveaxis(image, 0, -1)
+
 
         if show_labels:
             keypoints = sample["keypoints"]
