@@ -77,7 +77,6 @@ def visualize_keypoints(
                 fontweight="semibold",
             ) 
     
-
     return fig, ax
 
 
