@@ -14,7 +14,7 @@ def parse(path_to_yaml):
     return lists['images_lists'], lists['labels_lists']
 
 
-def make_coco(path_to_yaml, output_dir=None, anno_name='annotation', return_ano=False):
+def make_coco(path_to_yaml, output_dir=None, anno_name='annotation', name_image_folder='images', return_ano=False):
     coco_ano = {}
     
     images_list, labels_list = parse(path_to_yaml)
@@ -38,7 +38,7 @@ def make_coco(path_to_yaml, output_dir=None, anno_name='annotation', return_ano=
                 if image['id'] not in image_check_list:
                     images.append(image)
                     if output_dir:
-                        shutil.copy(norm_path, os.path.join(output_dir, image['file_name']))
+                        shutil.copy(norm_path, os.path.join(output_dir, name_image_folder, image['file_name']))
                     image_check_list.add(image['id'])
 
     for labels_path in labels_list:
@@ -69,5 +69,3 @@ def make_coco(path_to_yaml, output_dir=None, anno_name='annotation', return_ano=
             json.dump(coco_ano, anno_file)
     if return_ano:
         return coco_ano
-
-# make_coco('../mmdetection/train/train.yaml')
