@@ -130,10 +130,7 @@ class PointsDataset:
         self,
         x,
         show_labels=True,
-        image_key="image",
-        print_labels=False,
-        labels_kwargs={"radius": 2.5, "alpha": 1.0, "linewidth": 2, "ec": (0, 0, 0)},
-        cmap_kwargs=None,
+        labels_kwargs={"radius": 3, "alpha": 1.0, "ec":(0,0,0)},
     ):
 
         sample = self[x]
@@ -145,7 +142,7 @@ class PointsDataset:
         if show_labels:
             keypoints = sample["keypoints"]
         else:
-            keypoints = Keypoints(np.empty(0, 1))
+            keypoints = Keypoints(np.empty((0, 3)))
 
         _ = visualize_keypoints(
             image,

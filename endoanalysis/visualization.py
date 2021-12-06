@@ -64,7 +64,6 @@ def visualize_keypoints(
     y_coords = keypoints.y_coords()
     classes = keypoints.classes() 
     for i, (center_x, center_y, obj_class) in enumerate(zip(x_coords, y_coords, classes)):
-             
 
         patch = patches.Circle((center_x, center_y), color=class_colors[obj_class], **circles_kwargs)
         ax.add_patch(patch)
