@@ -19,13 +19,15 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--overwrite", type=bool, help="Flag of overwriting output dir if it exists", required=True
+    "--overwrite", dest='overwrite', action='store_true', help="Flag of overwriting output dir if it exists"
 )
+
 
 args = parser.parse_args()
 input_file = args.input_file
 output_dir = args.output_dir
 overwrite = args.overwrite
+name_image_folder = 'images'
 
 if os.path.isdir(output_dir):
     if overwrite:
@@ -34,5 +36,6 @@ if os.path.isdir(output_dir):
         raise('Pls check output directory and ovewrite flag')
 
 os.makedirs(output_dir)
+os.makedirs(os.path.join(output_dir, name_image_folder))
 make_coco(input_file, output_dir=output_dir, return_ano=False)
 
