@@ -5,7 +5,6 @@ from tqdm import tqdm
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import patches, cm
-import albumentations as A
 from endoanalysis.targets import Keypoints, keypoints_list_to_batch, load_keypoints
 from endoanalysis.visualization import visualize_keypoints, visualize_masks
 
@@ -86,7 +85,7 @@ class PointsDataset:
         labels_list,
         keypoints_dtype=np.float,
         class_colors={x: cm.Set1(x) for x in range(10)},
-        channels_last = True
+        channels_last=True,
     ):
 
         self.keypoints_dtype = keypoints_dtype
@@ -133,12 +132,12 @@ class PointsDataset:
         show_labels=True,
         image_key="image",
         print_labels=False,
-        labels_kwargs={"radius": 2.5, "alpha": 1.0,  "linewidth": 2, 'ec': (0,0,0)},
+        labels_kwargs={"radius": 2.5, "alpha": 1.0, "linewidth": 2, "ec": (0, 0, 0)},
         cmap_kwargs=None,
     ):
 
         sample = self[x]
-     
+
         image = sample["image"]
         if not self.channels_last:
             image = np.moveaxis(image, 0, -1)
@@ -146,20 +145,20 @@ class PointsDataset:
         if show_labels:
             keypoints = sample["keypoints"]
         else:
-            keypoints = Keypoints(np.empty(0,1))
+            keypoints = Keypoints(np.empty(0, 1))
 
         _ = visualize_keypoints(
             image,
             keypoints,
-            class_colors = self.class_colors,
-            circles_kwargs = labels_kwargs
+            class_colors=self.class_colors,
+            circles_kwargs=labels_kwargs,
         )
-        
+
     def collate(self, samples):
 
         images = [x["image"] for x in samples]
         keypoints_groups = [x["keypoints"] for x in samples]
-  
+
         return_dict = {
             "image": np.stack(images, 0),
             "keypoints": keypoints_list_to_batch(keypoints_groups),
@@ -214,42 +213,71 @@ class MasksDataset:
 
 
 def resize_dataset(image_paths, labels_paths, target_size=(256, 256)):
+    """
+    Resizes dataset to a given image size. The resize is made inplace.
 
-    transorm = A.Compose(
-        [A.Resize(height=target_size[0], width=target_size[1])],
-        keypoint_params=A.KeypointParams(format="xy"),
-    )
+
+    Parameters
+    ----------
+    image_paths: list os str
+        paths to images
+    labels_paths: list of str
+        paths to labels, should have the same length as labels_paths.
+        Assumed to be unique
+    target_size: tuple of int
+        desired image size, the format is (x_size, y_size)
+    """
+
+    image_processed = {x: False for x in image_paths}
+    image_sizes = {}
+
+    if len(labels_paths) != len(np.unique(labels_paths)):
+        raise Exception("There are repetaing labels paths.")
 
     with tqdm(total=len(image_paths)) as pbar:
         for image_path, labels_path in zip(image_paths, labels_paths):
 
-            image = image = cv2.imread(image_path)
-            image_h, image_w, _ = image.shape
+            if not image_processed[image_path]:
+                image = cv2.imread(image_path)
+                image_h, image_w, _ = image.shape
+                image_new = cv2.resize(
+                    image, target_size, interpolation=cv2.INTER_LINEAR
+                )
+                cv2.imwrite(image_path, image_new)
+                image_processed[image_path] = True
+                image_sizes[image_path] = image.shape[0:2]
+            else:
+                image_h, image_w = image_sizes[image_path]
 
             keypoints = load_keypoints(labels_path)
+            keypoints = np.array(keypoints).astype(int)
 
-            if keypoints:
-                keypoints = np.array(keypoints)
+            if len(keypoints):
+
                 keypoints[:, 0][keypoints[:, 0] == image_w] = image_w - 1
                 keypoints[:, 1][keypoints[:, 1] == image_h] = image_h - 1
-                coords = keypoints[:, 0:2]
-                
-                classes = keypoints[:, 2]
-            else:
-                coords = []
-            transformed = transorm(image=image, keypoints=coords)
+                x_coords_new = keypoints[:, 0] * target_size[0] / image_w
+                y_coords_new = keypoints[:, 1] * target_size[1] / image_h
+                x_coords_new = x_coords_new.astype(int)
+                y_coords_new = y_coords_new.astype(int)
 
-            cv2.imwrite(image_path, transformed["image"])
+                keypoints_new = np.vstack(
+                    [x_coords_new, y_coords_new, keypoints[:, 2]]
+                ).T
+
+            else:
+                keypoints_new = []
 
             labels_lines = [
-                " ".join([str(int(y)) for y in label] + [str(class_id)]) + " \n"
-                for label, class_id in zip(transformed["keypoints"], classes)
+                " ".join([str(x), str(y), str(class_id)]) + " \n"
+                for x, y, class_id in keypoints_new
             ]
 
             os.remove(labels_path)
 
             with open(labels_path, "w+") as labels_file:
                 labels_file.writelines(labels_lines)
+
             pbar.update()
 
 

@@ -379,23 +379,23 @@ def keypoints_list_to_batch(keypoints_list):
 
     Parameters
     ----------
-    keypoints_list : list of KeypointsTruth or KeypointsPred
+    keypoints_list : list of Keypoints
         keypoints list to transform
 
     Returns
     -------
-    batch : KeypointsTruthBatch or KeypointsPredBatch
+    batch : KeypointsBatch
         transformed batch
     """
     keypoints_return = []
 
     current_type = type(keypoints_list[0])
 
-    if current_type == Keypoints:
-        batch_type = KeypointsBatch
-    else:
-        raise Exception("Unsupported keypoints type %s" % current_type)
-
+    # if current_type == Keypoints:
+    #     batch_type = KeypointsBatch
+    # else:
+    #     raise Exception("Unsupported keypoints type %s" % current_type)
+    batch_type = KeypointsBatch
     for image_i, keypoints in enumerate(keypoints_list):
         if len(keypoints) != 0:
             image_labels = (np.ones(keypoints.shape[0]) * image_i)[:, np.newaxis]
