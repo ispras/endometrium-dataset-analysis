@@ -70,4 +70,4 @@ def make_coco(path_to_yaml, output_dir=None, anno_name='annotation', return_ano=
     if return_ano:
         return coco_ano
 
-make_coco('../mmdetection/train/train.yaml')
+# make_coco('../mmdetection/train/train.yaml')
