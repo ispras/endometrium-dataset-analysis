@@ -8,18 +8,18 @@ from endoanalysis.datasets import resize_dataset
 from endoanalysis.coco_transfer import make_coco
 
 
-parser = argparse.ArgumentParser(description="")
+parser = argparse.ArgumentParser(description="This script reformat standart endoanalysis dataset to coco format")
 
 parser.add_argument(
-    "--input_file", type=str,  help="", required=True
+    "--input_file", type=str,  help="Path to the yaml file", required=True
 )
 
 parser.add_argument(
-    "--output_dir", type=str, help="", required=True
+    "--output_dir", type=str, help="Path to the coco dataset dir", required=True
 )
 
 parser.add_argument(
-    "--overwrite", type=bool, help="", required=True
+    "--overwrite", type=bool, help="Flag of overwriting output dir if it exists", required=True
 )
 
 args = parser.parse_args()
