@@ -6,18 +6,24 @@ import cv2
 from endoanalysis.datasets import parse_master_yaml
 
 
-
-def parse(path_to_yaml):
-    images = []
-    labels = []
-    lists = parse_master_yaml(path_to_yaml)
-    return lists['images_lists'], lists['labels_lists']
-
-
 def make_coco(path_to_yaml, output_dir=None, anno_name='annotation', name_image_folder='images', return_ano=False):
+    """ Remake endometrium dataset to coco format
+
+    Args:
+        path_to_yaml (str): The abs or rel path to the yaml file with lists of images and labels annotations.
+        output_dir (bool): The dir in which dataset will be copied.
+        anno_name (str): The name of json annotation.
+        name_image_folder (str): The name of folder with images in coco dataset.
+        return_ano (bool): The flag of returning dict with annotation.
+
+    Returns:
+        dict {str: list, str: list} or None: The dict with annotation can be returned,
+            but default option is returning None.
+    """
     coco_ano = {}
-    
-    images_list, labels_list = parse(path_to_yaml)
+    lists = parse_master_yaml(path_to_yaml)
+    images_list = lists['images_lists']
+    labels_list = lists['labels_lists']
     images = []
     annotation = []
     image_check_list = set()
