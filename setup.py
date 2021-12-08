@@ -8,7 +8,8 @@ setup(
         "scripts/dab_values",
         "scripts/detect_background",
         "scripts/generate_masks",
-        "scripts/resize_dataset"
+        "scripts/resize_dataset",
+        "scripts/endonuke_to_coco"
     ],
     install_requires=[
         "tqdm==4.59.0",

@@ -33,7 +33,7 @@ if os.path.isdir(output_dir):
     if overwrite:
         shutil.rmtree(output_dir)
     else:
-        raise Exception('Output dierctory is not empty and overwrite flag is disabled, aborting.')
+        raise Exception('Output directory is not empty and overwrite flag is disabled, aborting.')
 
 os.makedirs(output_dir)
 os.makedirs(os.path.join(output_dir, name_image_folder))
