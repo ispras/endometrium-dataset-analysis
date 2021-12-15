@@ -20,6 +20,7 @@ setup(
         "scikit-learn==0.24.1",
         "opencv-python==4.5.1.48",
         "pandas==1.2.4",
-        "pingouin==0.4.0"
+        "pingouin==0.4.0",
+        "pyyaml==5.4.1"
     ]
 )
