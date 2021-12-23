@@ -340,13 +340,6 @@ class NucleiPropagator:
     window_size: int
         window size for watershed algoithm.
 
-    See also
-    --------
-    pointdet.models.LoG.LoGFilter :
-        specifications of the LoG filter.
-
-    pointdet.utils.nucprop.watershed :
-        wrapper for the skiimage watershed algoritm.
     """
 
     def __init__(
