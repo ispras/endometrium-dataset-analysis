@@ -10,6 +10,29 @@ from endoanalysis.visualization import visualize_keypoints, visualize_masks
 
 
 def extract_images_and_labels_paths(images_list_file, labels_list_file):
+    """
+    Extracts paths from the files with text lists of images and labels.
+
+    Parameters
+    ----------
+    images_list_file: str
+        path to the file with images ids
+    labels_list_file: str
+        path to the file with labels ids
+
+    Returns
+    -------
+    images: list of str
+        list of paths to images
+    images: list of str
+        list of paths to labels
+
+    Note
+    ----
+    The lists inside the files should have the same length.
+    Image id on i-th posidtion must coincide with labels id on i-th position.
+    If these conditions are not met, the exception is raised.   
+    """
 
     images_list_dir = os.path.dirname(images_list_file)
     labels_list_dir = os.path.dirname(labels_list_file)
@@ -31,6 +54,25 @@ def extract_images_and_labels_paths(images_list_file, labels_list_file):
 
 
 def agregate_images_and_labels_paths(images_lists, labels_lists):
+    """
+    Aggregates images and labels paths from multiple files.
+
+    Parameters
+    ----------
+    images_lists: str or list of str 
+        if list, the list of paths to files with images ids. 
+        If str, the single file with images ids.
+    labels_lists: str or list of str
+        if list, the list of paths to files with labels ids. 
+        If str, the single file with labels ids.
+
+    Returns
+    -------
+    images: list of str
+        list of paths to images
+    images: list of str
+        list of paths to labels
+    """
 
     if type(images_lists) != type(labels_lists):
         raise Exception(
@@ -54,13 +96,27 @@ def agregate_images_and_labels_paths(images_lists, labels_lists):
 
 
 def check_images_and_labels_pathes(images_paths, labels_paths):
+    """
+    Checks the consistency of images and labels paths.
+
+    Parameters
+    ----------
+    images: list of str
+        list of paths to images
+    images: list of str
+        list of paths to labels
+
+    Note
+    ----
+    The lists checked should have the same length.
+    Image id on i-th posidtion must coincide with labels id on i-th position.
+    If these conditions are not met, the exception is raised.  
+    """
 
     if len(images_paths) != len(labels_paths):
         raise Exception("Numbers of images and labels are not equal")
 
     for image_path, labels_path in zip(images_paths, labels_paths):
-        dirname_image = os.path.dirname(image_path)
-        dirname_labels = os.path.dirname(labels_path)
         filename_image = os.path.basename(image_path)
         filename_labels = os.path.basename(labels_path)
 
@@ -73,6 +129,19 @@ def check_images_and_labels_pathes(images_paths, labels_paths):
 
 
 def load_image(image_path):
+    """
+    Loads image from a given path.
+
+    Parameters
+    ----------
+    image_path: str
+        path to image to load
+    
+    Returns
+    -------
+    image: ndarray
+        the loaded image in RGB mode, the shape is (H, W, C)
+    """
     image = cv2.imread(image_path)
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     return image
@@ -198,7 +267,6 @@ class MasksDataset:
             cmap_kwargs = self.cmap_kwargs
 
         sample = self[x]
-        image = sample[image_key]
         visualize_masks(sample["image"], sample["masks"])
 
 
