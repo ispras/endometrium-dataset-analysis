@@ -55,7 +55,7 @@ To reproduce the analysis presented in the paper the following steps should be
 <ol>
   <li>
 
-   Download the dataset from [endnuke.ispras.ru](endnuke.ispras.ru) and
+   Download the dataset from [endonuke.ispras.ru](http://endonuke.ispras.ru/ and
     extract the archive. We assume, that the dataset is extracted in the directory
     `endometrium-dataset-analysis/data/dataset` and master yml files are extracted
     to `endometrium-dataset-analysis/data/master_ymls` Then go to the project
