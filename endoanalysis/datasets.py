@@ -148,27 +148,52 @@ def load_image(image_path):
 
 
 class PointsDataset:
+
+    """
+    Dataset providing access to images and keypoints.
+    Made in pytorch dataset style.
+
+    Parameters
+    ----------
+    images_lists: str or list of str 
+        if list, the list of paths to files with images ids. 
+        If str, the single file with images ids.
+    labels_lists: str or list of str
+        if list, the list of paths to files with labels ids. 
+        If str, the single file with labels ids.
+    class_colors: dict of tuple
+        colors for classes in visualisation
+    """
     def __init__(
         self,
         images_list,
-        labels_list,
-        keypoints_dtype=np.float,
-        class_colors={x: cm.Set1(x) for x in range(10)},
+        labels_list
     ):
-
-        self.keypoints_dtype = keypoints_dtype
 
         self.images_paths, self.labels_paths = agregate_images_and_labels_paths(
             images_list,
             labels_list,
         )
         self.class_colors = class_colors
+        self._keypoints_dtype = np.float
 
     def __len__(self):
         return len(self.images_paths)
 
     def __getitem__(self, x):
+        """
+        Provides dataset item.
 
+        Parameters
+        ----------
+        x: int
+            sample id
+        
+        Returns
+        -------
+        sample: dict
+            dictionary with two keys: "image" (ndarray) and "keypoints" (endoanalysis.targets.Keypoints)
+        """
         image = load_image(self.images_paths[x])
         keypoints = load_keypoints(self.labels_paths[x])
 
@@ -184,21 +209,41 @@ class PointsDataset:
         else:
             keypoints = np.empty((0, 3))
 
-        to_return = {"keypoints": Keypoints(keypoints.astype(self.keypoints_dtype))}
+        sample = {
+            "keypoints": Keypoints(keypoints.astype(self._keypoints_dtype)),
+            "image": image
+            }
 
-        to_return["image"] = image
-
-        return to_return
+        return sample
 
     def visualize(
         self,
         x,
         show_labels=True,
         labels_kwargs={"radius": 3, "alpha": 1.0, "ec": (0, 0, 0)},
+        class_colors={x: cm.Set1(x) for x in range(10)},
     ):
+        """
+        Visulalizes sample with given id. 
+        The data visualised is the ones which are got with self.__getitem__ method.
+
+        Parameters
+        ----------
+        x: int
+            sample id
+        show_labels: bool
+            whether to show keypoints
+        labels_kwargs: dict
+            dictionary of parameters for keypoints
+        class_colors: dict of tuple
+            RGB colors for different classes
+
+        See also
+        --------
+        endoalaysis.visualisation.visualize_keypoints
+        """
 
         sample = self[x]
-
         image = sample["image"]
 
         if show_labels:
@@ -209,27 +254,53 @@ class PointsDataset:
         _ = visualize_keypoints(
             image,
             keypoints,
-            class_colors=self.class_colors,
+            class_colors=class_colors,
             circles_kwargs=labels_kwargs,
         )
 
     def collate(self, samples):
+        """
+        Composes batch from multiple samples
 
+        Parameters
+        ----------
+        samples: list
+            list of samples provided by self.__getitem__ method
+        
+        Returns
+        -------
+        batch: dict
+            dictionary with two keys: "image" (ndarray) and "keypoints" (endoanalysis.targets.KeypointsBatch)
+        
+        """
         images = [x["image"] for x in samples]
         keypoints_groups = [x["keypoints"] for x in samples]
 
-        return_dict = {
+        batch = {
             "image": np.stack(images, 0),
             "keypoints": keypoints_list_to_batch(keypoints_groups),
         }
 
-        return return_dict
+        return batch
 
 
 class MasksDataset:
     def __init__(
-        self, images_list, masks_list, cmap_kwargs={"cmap": cm.Set1, "period": 8}
+        self, images_list, masks_list
     ):
+        """
+        Dataset providing access to images and keypoints.
+        Made in pytorch dataset style.
+    
+    Parameters
+    ----------
+    images_lists: str or list of str 
+        if list, the list of paths to files with images ids. 
+        If str, the single file with images ids.
+    masks_lists: str or list of str
+        if list, the list of paths to files with masks ids. 
+        If str, the single file with masks ids.
+        """
 
         if type(images_list) != type(masks_list):
             raise Exception("images_list and masks_list should have the same type")
@@ -252,7 +323,19 @@ class MasksDataset:
         return len(self.images_paths)
 
     def __getitem__(self, x):
+        """
+        Provides dataset item.
 
+        Parameters
+        ----------
+        x: int
+            sample id
+        
+        Returns
+        -------
+        sample: dict
+            dictionary with two keys: "image" (ndarray) and "masks" (ndarray)
+        """
         masks_array = np.load(self.masks_paths[x])
 
         return {
@@ -261,11 +344,8 @@ class MasksDataset:
             "classes": masks_array["classes"],
         }
 
-    def visualize(self, x, show_labels=True, image_key="image", cmap_kwargs=None):
-
-        if cmap_kwargs is None:
-            cmap_kwargs = self.cmap_kwargs
-
+    def visualize(self, x, cmap_kwargs={"cmap": cm.Set1, "period": 8}):
+        """Visualises a sample with a given id"""
         sample = self[x]
         visualize_masks(sample["image"], sample["masks"])
 
@@ -273,7 +353,6 @@ class MasksDataset:
 def resize_dataset(image_paths, labels_paths, target_size=(256, 256)):
     """
     Resizes dataset to a given image size. The resize is made inplace.
-
 
     Parameters
     ----------
@@ -283,7 +362,7 @@ def resize_dataset(image_paths, labels_paths, target_size=(256, 256)):
         paths to labels, should have the same length as labels_paths.
         Assumed to be unique
     target_size: tuple of int
-        desired image size, the format is (x_size, y_size)
+        output image size, the format is (x_size, y_size)
     """
 
     image_processed = {x: False for x in image_paths}

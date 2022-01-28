@@ -201,8 +201,7 @@ def load_agreement_keypoints(agreement_yml_path):
 
         dataset = PointsDataset(
             images_list,
-            labels_list,
-            keypoints_dtype = float
+            labels_list
         )
         datasets_lens[expert_name] = len(dataset)
         datasets[expert_name] = dataset
