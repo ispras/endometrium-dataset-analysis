@@ -174,7 +174,6 @@ class PointsDataset:
             images_list,
             labels_list,
         )
-        self.class_colors = class_colors
         self._keypoints_dtype = np.float
 
     def __len__(self):
@@ -317,7 +316,6 @@ class MasksDataset:
             )
             self.images_paths += images_paths_current
             self.masks_paths += masks_paths_current
-        self.cmap_kwargs = cmap_kwargs
 
     def __len__(self):
         return len(self.images_paths)
