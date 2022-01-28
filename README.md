@@ -1,7 +1,7 @@
 # Description
 
 This is a supplementary repository for EndoNuke dataset. The dataset can be
- accessed at [endnuke.ispras.ru](https://endonuke.ispras.ru). The code here is the
+ accessed at [endonuke.ispras.ru](http://endonuke.ispras.ru/). The code here is the
  implementation of the methods described in the corresponding paper and also
  provides some useful tools to use this dataset. It's up to a user to decide,
  whether to use them or to create the original methods.
@@ -55,7 +55,7 @@ To reproduce the analysis presented in the paper the following steps should be
 <ol>
   <li>
 
-   Download the dataset from [endonuke.ispras.ru](http://endonuke.ispras.ru/ and
+   Download the dataset from [endonuke.ispras.ru](http://endonuke.ispras.ru/) and
     extract the archive. We assume, that the dataset is extracted in the directory
     `endometrium-dataset-analysis/data/dataset` and master yml files are extracted
     to `endometrium-dataset-analysis/data/master_ymls` Then go to the project
