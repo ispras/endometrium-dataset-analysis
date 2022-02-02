@@ -396,6 +396,9 @@ def keypoints_list_to_batch(keypoints_list):
     # else:
     #     raise Exception("Unsupported keypoints type %s" % current_type)
     batch_type = KeypointsBatch
+
+    if not keypoints_list:
+        return KeypointsBatch(np.empty((0,4)))
     for image_i, keypoints in enumerate(keypoints_list):
         if len(keypoints) != 0:
             image_labels = (np.ones(keypoints.shape[0]) * image_i)[:, np.newaxis]
