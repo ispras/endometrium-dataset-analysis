@@ -387,18 +387,13 @@ def keypoints_list_to_batch(keypoints_list):
     batch : KeypointsBatch
         transformed batch
     """
-    keypoints_return = []
-
-    current_type = type(keypoints_list[0])
-
-    # if current_type == Keypoints:
-    #     batch_type = KeypointsBatch
-    # else:
-    #     raise Exception("Unsupported keypoints type %s" % current_type)
+    
     batch_type = KeypointsBatch
 
     if not keypoints_list:
-        return KeypointsBatch(np.empty((0,4)))
+        return batch_type(np.empty((0,4)))
+        
+    keypoints_return = []
     for image_i, keypoints in enumerate(keypoints_list):
         if len(keypoints) != 0:
             image_labels = (np.ones(keypoints.shape[0]) * image_i)[:, np.newaxis]
