@@ -399,5 +399,7 @@ def keypoints_list_to_batch(keypoints_list):
             image_labels = (np.ones(keypoints.shape[0]) * image_i)[:, np.newaxis]
             keypoints = np.hstack([image_labels, keypoints])
             keypoints_return.append(keypoints)
+        else:
+            keypoints_return.append(np.empty((0,4)))
 
     return batch_type(np.concatenate(keypoints_return, 0))
