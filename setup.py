@@ -13,7 +13,7 @@ setup(
     ],
     install_requires=[
         "tqdm==4.59.0",
-        "numpy==1.20.2",
+        "numpy==1.22.3",
         "matplotlib==3.4.1",
         "seaborn==0.11.1",
         "scipy==1.7.1",
