@@ -28,7 +28,7 @@ git clone git@github.com:ispras/endometrium-dataset-analysis.git
 cd endometrium-dataset-analysis
 pip install .
 ```
-To test an installation run:
+To test the installation run:
 
 ```
 pip list | grep endometrium
@@ -38,8 +38,8 @@ The result must contain the line starting with `endometrium-dataset-analysis`
 ## R installation
 
 We use `R` implementation dip test for unimodality in the noteboog `staining.ipynb`
-To install `R`, follow th instrcutions from [here](https://www.r-project.org/).
-After `R` is installed, install the package diptest inside `R` environment:
+To install `R`, follow the instructions from [here](https://www.r-project.org/).
+After `R` is installed, install the diptest package inside `R` environment:
 ```R
 install.packages("diptest")
 ```
