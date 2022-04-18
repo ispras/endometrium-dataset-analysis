@@ -161,8 +161,6 @@ class PointsDataset:
     labels_lists: str or list of str
         if list, the list of paths to files with labels ids. 
         If str, the single file with labels ids.
-    class_colors: dict of tuple
-        colors for classes in visualisation
     """
     def __init__(
         self,
