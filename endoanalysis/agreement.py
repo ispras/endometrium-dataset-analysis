@@ -10,6 +10,7 @@ from matplotlib import cm
 import pingouin as pg
 import seaborn as sns
 from scipy.optimize import linear_sum_assignment
+from scipy.stats import norm as normal_distribution
 from sklearn.metrics import cohen_kappa_score
 from endoanalysis.datasets import PointsDataset
 
@@ -94,7 +95,8 @@ def compute_kappas(
     experts_list,
     indexes_to_consider="all",
     drop_missed=False,
-    compute_all_kappas=False
+    sig_level = 0.05,
+    compute_all_kappas=False,
 ):
     '''
     Compute Cohen's kappa for all raters from raters_list.  
@@ -114,20 +116,25 @@ def compute_kappas(
         If indexes_to_consider == "all", all the present images will be processed
     drop_missed : bool
         wheather to consider not matched targeds as separate class (with -1 label)
+    sig_level: float
+        significance level for the confidence interval
     compute_all_kappas : bool
         Usful for debug purposes. If True, kappas scores will be computed for all experts pairs, even if the pairs are differ by permutation or contains equal indexes. (So the pairs (1,2) and (2,1) will be computed separately, and the pairs (1,1) and (2,2) will also be computed). 
         If False, only lower offdiagonal pairs are actually computed, while diagonal pairs are hardcoded to be equal to 1.
-        
+   
     Returns
     -------
     kappas : ndarray
         the matrix of pairwise kappas. kappas[i,j] is a Cohen kappa for experts_list[i] and experts_list[j]. kappas[i,i] are always equals to 1,
-        
-
+    deltas: ndarray
+        the matrix of pairwise confidence interval half lengths for corresponding kappas
+    experts_to_ids: dict
+        mapping expert's names to their ids in kappas matrix
     '''
     
     num_experts = len(experts_list)
     kappas = np.zeros((num_experts, num_experts))
+    deltas = np.zeros((num_experts, num_experts))
     experts_to_ids = {y:x for x, y in enumerate(experts_list)}
     
     
@@ -144,19 +151,75 @@ def compute_kappas(
             indexes_to_consider,
             drop_missed=drop_missed
         )
-        kappa = cohen_kappa_score(relaibility_matrix[0], relaibility_matrix[1])
+        kappa, delta = kappa_score(relaibility_matrix[0], relaibility_matrix[1], sig_level)
 
-        kappas[
-            experts_to_ids[expert_1], 
-            experts_to_ids[expert_2]
-        ] = kappa
+        for cont, value in zip([kappas, deltas], [kappa, delta]):
+            cont[
+                experts_to_ids[expert_1], 
+                experts_to_ids[expert_2]
+            ] = value
+
     
     if not compute_all_kappas:
         kappas += kappas.transpose()
+        deltas += deltas.transpose()
         for i in range(num_experts):
             kappas[i,i] = 1.
             
-    return kappas, experts_to_ids
+    return kappas, deltas, experts_to_ids
+
+def kappa_score(choices_1, choices_2, sig_level = 0.05):
+    '''
+    Compute Cohen's cappa and it's confidence inteval at a given significance level.
+
+    Parameters
+    ----------
+    choices_1: ndarray
+        choices of the first expert
+    choices_2: ndarray
+        choices of the second expert. Must be the same length as choices_first
+    sig_level: float
+        significance level for the confidence interval
+
+    Returns
+    -------
+    kappa: float
+        Cohen's kappa
+    delta: float
+        confidence interval half length
+
+    See also
+    --------
+    The method for computing kappa's standart deviation see
+    Fleiss, Cohen, Everitt(1969). Large sample standard errors of kappa and weighted kappa.
+    https://doi.org/10.1037/h0028106
+    '''
+
+    if len(choices_1) != len(choices_2):
+        raise Exception("Dirst and second experts must make the same number of choices.")
+
+    z = normal_distribution.ppf(1 - sig_level / 2)
+    values = np.unique(np.concatenate([choices_1, choices_2]))
+    num_samples = len(choices_1)
+
+    first_rater = choices_1.reshape(1,-1) == values.reshape(-1,1)
+    second_rater = choices_2.reshape(1,-1) == values.reshape(-1,1)
+    cont_matrix = (first_rater[np.newaxis,::] * second_rater[:,np.newaxis,:]).sum(2) / num_samples
+   
+    first_marginals = cont_matrix.sum(0)
+    second_marginals = cont_matrix.sum(1)
+    PO = np.sum(np.diag(cont_matrix))
+    PE = np.sum(first_marginals * second_marginals)
+    kappa = (PO - PE) / (1- PE)
+
+    M  = cont_matrix * (first_marginals[np.newaxis] + second_marginals[:,np.newaxis])**2
+    M_sum_diag = np.sum(np.diag(M))
+    M_sum_nondiag = M.sum() - M_sum_diag
+
+    Var =  (PO*(1-PE)**2 + (1-PO)**2 *M_sum_nondiag -  (1-PO)**2 * M_sum_diag - (PO*PE - 2*PE +PO)**2 ) / (1-PE)**4 / num_samples
+    delta = np.sqrt(Var) * z
+    return kappa, delta
+
 
 def load_agreement_keypoints(agreement_yml_path):
     """
@@ -218,13 +281,13 @@ def load_agreement_keypoints(agreement_yml_path):
     return keypoints
 
 
-def plot_agreement_matrix(kappas, experts, fig= None, ax=None):
+def plot_agreement_matrix(kappas, experts, precision=2, fig= None, ax=None):
     
     if (ax is None and fig is not None) or (ax is not None and fig is None):
         raise Exception("Fig and ax paramterers must be None or not None simultaneously")
         
     kappas = np.copy(kappas)
- 
+    number_format = "1.%if"%precision
     mask = np.zeros_like(kappas)
     mask[np.triu_indices_from(kappas,k=1)] = True
     with sns.axes_style("white"):
@@ -236,7 +299,7 @@ def plot_agreement_matrix(kappas, experts, fig= None, ax=None):
             vmin=0.,  
             vmax=1,
             annot=True, 
-            fmt="1.2f",
+            fmt=number_format,
             square=True,
             cbar=False,
             cmap="coolwarm",
@@ -251,14 +314,67 @@ def plot_agreement_matrix(kappas, experts, fig= None, ax=None):
     
     return fig, ax
 
+import numpy as np
+import seaborn as sns
+
+def plot_confidence_intevals_matrix(kappas, deltas, experts, precision=2, fig= None, ax=None):
+    
+    if (ax is None and fig is not None) or (ax is not None and fig is None):
+        raise Exception("Fig and ax paramterers must be None or not None simultaneously")
+        
+    kappas = np.copy(kappas)
+    mask = np.zeros_like(kappas)
+    mask[np.triu_indices_from(kappas,k=1)] = True
+    kappas_low = kappas - deltas
+    kappas_high = kappas + deltas
+    kappas_low = np.round(kappas - deltas, precision)
+    kappas_high = np.round(kappas + deltas, precision)
+    annotation = np.core.defchararray.add(kappas_low.astype(str), " - ") 
+    annotation = np.core.defchararray.add(annotation, kappas_high.astype(str))
+    annotation[np.diag_indices_from(annotation)] = "-"
+    with sns.axes_style("white"):
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(10, 7))
+        sns.heatmap(
+            kappas, 
+            mask=mask,
+            vmin=0.,  
+            vmax=1,
+            annot=annotation, 
+            fmt="",
+            square=True,
+            cbar=False,
+            cmap="coolwarm",
+            linewidths=1,
+            annot_kws={"fontsize":9},
+            ax=ax
+        )
+        ax.set_xticklabels(experts)
+        ax.set_yticklabels(experts)
+        ax.hlines([3], 0., 3., color="black", lw=3.)
+        ax.vlines([3], 3., 7., color="black", lw=3.)
+        plt.setp(ax.xaxis.get_majorticklabels(), rotation=45 )
+        plt.setp(ax.yaxis.get_majorticklabels(), rotation=45 )
+    
+    return fig, ax
 
 
-def plot_agreement_matrices(kappas, studies, experts, fig_size=(16, 4)):
+def plot_agreement_matrices(kappas, studies, experts, precision=2, fig_size=(16, 4)):
     fig, axs = plt.subplots(1,len(studies), figsize=fig_size)
     fig.tight_layout()
     fig.subplots_adjust(wspace=-0.1)
     for ax, study_name in zip(axs, studies):
-        plot_agreement_matrix(kappas[study_name], experts, fig=fig, ax=ax)
+        plot_agreement_matrix(kappas[study_name], experts, precision=precision, fig=fig, ax=ax)
+        ax.set_title(study_name, y=-0.25)
+    fig.colorbar(cm.ScalarMappable(norm=None, cmap="coolwarm"), ax=ax)
+    return fig, ax
+
+def plot_confidence_intervals_matrices(kappas, deltas, studies, experts, precision=2, fig_size=(16, 4)):
+    fig, axs = plt.subplots(1,len(studies), figsize=fig_size)
+    fig.tight_layout()
+    fig.subplots_adjust(wspace=-0.1)
+    for ax, study_name in zip(axs, studies):
+        plot_confidence_intevals_matrix(kappas[study_name], deltas[study_name], experts, precision=precision, fig=fig, ax=ax)
         ax.set_title(study_name, y=-0.25)
     fig.colorbar(cm.ScalarMappable(norm=None, cmap="coolwarm"), ax=ax)
     return fig, ax
