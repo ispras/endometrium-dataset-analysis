@@ -4,8 +4,6 @@ import yaml
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import  tqdm
-
-
 from endoanalysis.datasets import extract_images_and_labels_paths
 from endoanalysis.nucprop import StainAnalyzer
 
@@ -124,9 +122,6 @@ def generate_masks_lists(lists, masks_dir, master_yml, new_master_dir=""):
         yaml.safe_dump(lists, file)
             
           
-            
-            
-
 def generate_masks(
     image_i, 
     endo_dataset,
@@ -179,7 +174,7 @@ def generate_masks(
     
 
             
-def load_masks_areas(paths_list):
+def load_masks_areas(paths_list, class_label = None):
     """
     Loads masks from the paths_list and caluclates their areas. kde
     
@@ -201,6 +196,9 @@ def load_masks_areas(paths_list):
  
             with open(masks_path, "rb") as file:
                 masks = np.load(file)["masks"]
+                classes = np.load(file)["classes"]
+                if class_label is not None:
+                    masks = masks[classes==class_label]
                 mask_areas += [x.sum() for x in masks]
                 pbar.update()
     print("Done!")
